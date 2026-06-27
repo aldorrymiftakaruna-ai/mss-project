@@ -2,63 +2,39 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MaintenanceReport;
+use App\Models\Asset;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 
 class MaintenanceController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $reports = MaintenanceReport::with(['asset', 'reporter'])->latest()->get();
+        $assets = Asset::all();
+        $employees = Employee::where('is_active', true)->get();
+        return view('maintenance.index', compact('reports', 'assets', 'employees'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'asset_id' => 'required',
+            'reported_by' => 'required',
+            'shift' => 'required',
+            'tanggal' => 'required|date',
+            'jenis' => 'required',
+            'deskripsi_masalah' => 'required',
+        ]);
+
+        MaintenanceReport::create($request->all());
+        return redirect()->route('maintenance.index')->with('success', 'Laporan berhasil ditambahkan.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function destroy(MaintenanceReport $maintenance)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $maintenance->delete();
+        return redirect()->route('maintenance.index')->with('success', 'Laporan berhasil dihapus.');
     }
 }

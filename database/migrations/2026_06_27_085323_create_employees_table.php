@@ -17,7 +17,7 @@ return new class extends Migration
         $table->string('name');
         $table->string('telegram_id')->nullable()->unique();
         $table->string('telegram_username')->nullable();
-        $table->enum('role', ['supervisor', 'teknisi']);
+        $table->enum('role', ['foreman', 'teknisi']);
         $table->enum('shift', ['1', '2', '3'])->nullable();
         $table->boolean('is_active')->default(true);
         $table->timestamps();

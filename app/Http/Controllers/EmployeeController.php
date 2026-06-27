@@ -2,63 +2,34 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
+use App\Models\Company;
 use Illuminate\Http\Request;
 
 class EmployeeController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $employees = Employee::with('company')->latest()->get();
+        $companies = Company::all();
+        return view('employees.index', compact('employees', 'companies'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'company_id' => 'required',
+            'name' => 'required',
+            'role' => 'required|in:foreman,teknisi',
+        ]);
+
+        Employee::create($request->all());
+        return redirect()->route('employees.index')->with('success', 'Karyawan berhasil ditambahkan.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function destroy(Employee $employee)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $employee->delete();
+        return redirect()->route('employees.index')->with('success', 'Karyawan berhasil dihapus.');
     }
 }
