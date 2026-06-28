@@ -34,38 +34,58 @@
 <div id="content-measurements">
     <div class="bg-white rounded-xl border border-gray-200">
         <table class="w-full text-sm">
-            <thead class="border-b border-gray-100">
-                <tr class="text-xs text-gray-500 uppercase">
-                    <th class="px-5 py-3 text-left">Tanggal</th>
-                    <th class="px-5 py-3 text-left">Equipment</th>
-                    <th class="px-5 py-3 text-left">Vibrasi DE</th>
-                    <th class="px-5 py-3 text-left">Vibrasi NDE</th>
-                    <th class="px-5 py-3 text-left">Temperature</th>
-                    <th class="px-5 py-3 text-left">Pressure</th>
-                    <th class="px-5 py-3 text-left">Diukur Oleh</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                @forelse($measurements as $m)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-5 py-3 text-gray-600">{{ $m->tanggal->format('d M Y') }}</td>
-                    <td class="px-5 py-3">
-                        <div class="font-medium text-gray-800">{{ $m->asset->name }}</div>
-                        <div class="text-xs text-gray-400 font-mono">{{ $m->asset->tag_no }}</div>
-                    </td>
-                    <td class="px-5 py-3 text-gray-600">{{ $m->vibrasi_de ?? '—' }} mm/s</td>
-                    <td class="px-5 py-3 text-gray-600">{{ $m->vibrasi_nde ?? '—' }} mm/s</td>
-                    <td class="px-5 py-3 text-gray-600">{{ $m->temperature ?? '—' }} °C</td>
-                    <td class="px-5 py-3 text-gray-600">{{ $m->pressure ?? '—' }} Bar</td>
-                    <td class="px-5 py-3 text-gray-600">{{ $m->measuredBy->name ?? '—' }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="7" class="px-5 py-10 text-center text-gray-400">Belum ada data pengukuran.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+    <thead class="border-b border-gray-100">
+        <tr class="text-xs text-gray-500 uppercase">
+            <th class="px-5 py-3 text-left">Tanggal</th>
+            <th class="px-5 py-3 text-left">Equipment</th>
+            <th class="px-5 py-3 text-left">Driver Max Vib (mm/s)</th>
+            <th class="px-5 py-3 text-left">Driver Max Temp (°C)</th>
+            <th class="px-5 py-3 text-left">Driven Max Vib (mm/s)</th>
+            <th class="px-5 py-3 text-left">Driven Max Temp (°C)</th>
+            <th class="px-5 py-3 text-left">Ampere (A)</th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+        @forelse($measurements as $m)
+        @php
+            $driverMaxVib = max(
+                $m->driver_de_vib_v ?? 0, $m->driver_de_vib_h ?? 0, $m->driver_de_vib_a ?? 0,
+                $m->driver_nde_vib_v ?? 0, $m->driver_nde_vib_h ?? 0, $m->driver_nde_vib_a ?? 0
+            );
+            $driverMaxTemp = max($m->driver_de_temp ?? 0, $m->driver_nde_temp ?? 0);
+            $drivenMaxVib = max(
+                $m->driven_de_vib_v ?? 0, $m->driven_de_vib_h ?? 0, $m->driven_de_vib_a ?? 0,
+                $m->driven_nde_vib_v ?? 0, $m->driven_nde_vib_h ?? 0, $m->driven_nde_vib_a ?? 0
+            );
+            $drivenMaxTemp = max($m->driven_de_temp ?? 0, $m->driven_nde_temp ?? 0);
+        @endphp
+        <tr class="hover:bg-gray-50">
+            <td class="px-5 py-3 text-gray-600">{{ $m->tanggal->format('d M Y') }}</td>
+            <td class="px-5 py-3">
+                <div class="font-medium text-gray-800">{{ $m->asset->name }}</div>
+                <div class="text-xs text-gray-400 font-mono">{{ $m->asset->tag_no }}</div>
+            </td>
+            <td class="px-5 py-3 {{ $driverMaxVib > 4.5 ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
+                {{ $driverMaxVib > 0 ? number_format($driverMaxVib, 2) : '—' }}
+            </td>
+            <td class="px-5 py-3 {{ $driverMaxTemp > 82 ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
+                {{ $driverMaxTemp > 0 ? number_format($driverMaxTemp, 1) : '—' }}
+            </td>
+            <td class="px-5 py-3 {{ $drivenMaxVib > 4.5 ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
+                {{ $drivenMaxVib > 0 ? number_format($drivenMaxVib, 2) : '—' }}
+            </td>
+            <td class="px-5 py-3 {{ $drivenMaxTemp > 82 ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
+                {{ $drivenMaxTemp > 0 ? number_format($drivenMaxTemp, 1) : '—' }}
+            </td>
+            <td class="px-5 py-3 text-gray-600">{{ $m->driver_ampere ?? '—' }}</td>
+        </tr>
+        @empty
+        <tr>
+            <td colspan="7" class="px-5 py-10 text-center text-gray-400">Belum ada data pengukuran.</td>
+        </tr>
+        @endforelse
+    </tbody>
+</table>
     </div>
 </div>
 
@@ -160,44 +180,125 @@
             </div>
 
             {{-- Measurement Fields --}}
-            <div id="fields-measurement" class="space-y-4">
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Diukur Oleh *</label>
-                    <select name="measured_by" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                        <option value="">Pilih Teknisi</option>
-                        @foreach($employees as $emp)
-                        <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block">Vibrasi DE (mm/s)</label>
-                        <input type="number" step="0.01" name="vibrasi_de"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block">Vibrasi NDE (mm/s)</label>
-                        <input type="number" step="0.01" name="vibrasi_nde"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block">Temperature (°C)</label>
-                        <input type="number" step="0.01" name="temperature"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block">Pressure (Bar)</label>
-                        <input type="number" step="0.01" name="pressure"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                    </div>
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Catatan</label>
-                    <textarea name="catatan" rows="2"
-                        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
-                </div>
+<div id="fields-measurement" class="space-y-4">
+    <div>
+        <label class="text-xs text-gray-500 mb-1 block">Diukur Oleh *</label>
+        <select name="measured_by" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+            <option value="">Pilih Teknisi</option>
+            @foreach($employees as $emp)
+            <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+            @endforeach
+        </select>
+    </div>
+
+    {{-- Driver (Motor) --}}
+    <div class="border border-gray-100 rounded-lg p-3">
+        <p class="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Driver (Motor)</p>
+        <div class="grid grid-cols-3 gap-2 mb-2">
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE Vib V (mm/s)</label>
+                <input type="number" step="0.01" name="driver_de_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
             </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE Vib H (mm/s)</label>
+                <input type="number" step="0.01" name="driver_de_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE Vib A (mm/s)</label>
+                <input type="number" step="0.01" name="driver_de_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE CF+</label>
+                <input type="number" step="0.01" name="driver_de_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE Temp (°C)</label>
+                <input type="number" step="0.01" name="driver_de_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mb-2">
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE Vib V (mm/s)</label>
+                <input type="number" step="0.01" name="driver_nde_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE Vib H (mm/s)</label>
+                <input type="number" step="0.01" name="driver_nde_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE Vib A (mm/s)</label>
+                <input type="number" step="0.01" name="driver_nde_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE CF+</label>
+                <input type="number" step="0.01" name="driver_nde_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE Temp (°C)</label>
+                <input type="number" step="0.01" name="driver_nde_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">Ampere (A)</label>
+                <input type="number" step="0.01" name="driver_ampere" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+        </div>
+    </div>
+
+    {{-- Driven --}}
+    <div class="border border-gray-100 rounded-lg p-3">
+        <p class="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Driven (Gearbox/Pump/dll)</p>
+        <div class="grid grid-cols-3 gap-2 mb-2">
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE Vib V (mm/s)</label>
+                <input type="number" step="0.01" name="driven_de_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE Vib H (mm/s)</label>
+                <input type="number" step="0.01" name="driven_de_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE Vib A (mm/s)</label>
+                <input type="number" step="0.01" name="driven_de_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE CF+</label>
+                <input type="number" step="0.01" name="driven_de_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">DE Temp (°C)</label>
+                <input type="number" step="0.01" name="driven_de_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE Vib V (mm/s)</label>
+                <input type="number" step="0.01" name="driven_nde_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE Vib H (mm/s)</label>
+                <input type="number" step="0.01" name="driven_nde_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE Vib A (mm/s)</label>
+                <input type="number" step="0.01" name="driven_nde_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE CF+</label>
+                <input type="number" step="0.01" name="driven_nde_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 mb-1 block">NDE Temp (°C)</label>
+                <input type="number" step="0.01" name="driven_nde_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <label class="text-xs text-gray-500 mb-1 block">Catatan</label>
+        <textarea name="catatan" rows="2"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+    </div>
+</div>
 
             {{-- Finding Fields --}}
             <div id="fields-finding" class="space-y-4 hidden">

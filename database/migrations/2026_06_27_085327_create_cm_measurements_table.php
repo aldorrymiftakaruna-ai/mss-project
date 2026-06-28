@@ -16,10 +16,38 @@ return new class extends Migration
         $table->foreignId('asset_id')->constrained('assets')->onDelete('cascade');
         $table->foreignId('measured_by')->constrained('employees')->onDelete('cascade');
         $table->date('tanggal');
-        $table->decimal('vibrasi_de', 5, 2)->nullable();   // Drive End mm/s
-        $table->decimal('vibrasi_nde', 5, 2)->nullable();  // Non Drive End mm/s
-        $table->decimal('temperature', 5, 2)->nullable();  // °C
-        $table->decimal('pressure', 8, 2)->nullable();     // Bar/PSI
+
+        // Driver (Motor) - DE
+        $table->decimal('driver_de_vib_v', 5, 2)->nullable();
+        $table->decimal('driver_de_vib_h', 5, 2)->nullable();
+        $table->decimal('driver_de_vib_a', 5, 2)->nullable();
+        $table->decimal('driver_de_cf', 5, 2)->nullable();
+        $table->decimal('driver_de_temp', 5, 2)->nullable();
+
+        // Driver (Motor) - NDE
+        $table->decimal('driver_nde_vib_v', 5, 2)->nullable();
+        $table->decimal('driver_nde_vib_h', 5, 2)->nullable();
+        $table->decimal('driver_nde_vib_a', 5, 2)->nullable();
+        $table->decimal('driver_nde_cf', 5, 2)->nullable();
+        $table->decimal('driver_nde_temp', 5, 2)->nullable();
+
+        // Driver Ampere
+        $table->decimal('driver_ampere', 6, 2)->nullable();
+
+        // Driven (Gearbox/Pump/dll) - DE
+        $table->decimal('driven_de_vib_v', 5, 2)->nullable();
+        $table->decimal('driven_de_vib_h', 5, 2)->nullable();
+        $table->decimal('driven_de_vib_a', 5, 2)->nullable();
+        $table->decimal('driven_de_cf', 5, 2)->nullable();
+        $table->decimal('driven_de_temp', 5, 2)->nullable();
+
+        // Driven - NDE
+        $table->decimal('driven_nde_vib_v', 5, 2)->nullable();
+        $table->decimal('driven_nde_vib_h', 5, 2)->nullable();
+        $table->decimal('driven_nde_vib_a', 5, 2)->nullable();
+        $table->decimal('driven_nde_cf', 5, 2)->nullable();
+        $table->decimal('driven_nde_temp', 5, 2)->nullable();
+
         $table->text('catatan')->nullable();
         $table->timestamps();
     });

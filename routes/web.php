@@ -14,6 +14,8 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/assets/import', [AssetController::class, 'importForm'])->name('assets.import.form');
+Route::post('/assets/import', [AssetController::class, 'import'])->name('assets.import');
 Route::resource('assets', AssetController::class);
 Route::resource('maintenance', MaintenanceController::class);
 Route::resource('cm', CmController::class);

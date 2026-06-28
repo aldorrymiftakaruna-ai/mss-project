@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class Asset extends Model
 {
     protected $fillable = [
-        'company_id', 'tag_no', 'name', 'model',
-        'brand', 'serial_number', 'type', 'status', 'description'
-    ];
+    'company_id', 'tag_no', 'description', 'model',
+    'serial_number', 'head_capacity', 'motor_kw', 'motor_rpm',
+    'motor_ampere', 'status'
+];
 
     public function company()
     {

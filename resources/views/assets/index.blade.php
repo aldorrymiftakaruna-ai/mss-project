@@ -54,7 +54,7 @@
             @forelse($assets as $asset)
             <tr class="hover:bg-gray-50 asset-row" data-pt="{{ $asset->company->code }}" data-status="{{ $asset->status }}">
                 <td class="px-5 py-3 font-mono text-xs font-semibold text-gray-700">{{ $asset->tag_no }}</td>
-                <td class="px-5 py-3 font-medium text-gray-800">{{ $asset->name }}</td>
+                <td class="px-5 py-3 font-medium text-gray-800">{{ $asset->description }}</td>
                 <td class="px-5 py-3 text-gray-500">{{ $asset->model ?? '—' }}</td>
                 <td class="px-5 py-3 text-gray-500">{{ $asset->company->code }}</td>
                 <td class="px-5 py-3 text-gray-500 capitalize">{{ $asset->type }}</td>

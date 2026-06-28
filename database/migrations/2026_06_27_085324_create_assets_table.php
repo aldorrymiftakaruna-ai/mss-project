@@ -14,14 +14,15 @@ return new class extends Migration
     Schema::create('assets', function (Blueprint $table) {
         $table->id();
         $table->foreignId('company_id')->constrained('companies')->onDelete('cascade');
-        $table->string('tag_no')->unique();        // SC14, SC03A, P-6163P7
-        $table->string('name');                    // Nama equipment
-        $table->string('model')->nullable();       // Screw Feeder, Varmex, dll
-        $table->string('brand')->nullable();       // Merk
+        $table->string('tag_no')->unique();
+        $table->string('description');
+        $table->string('model')->nullable();
         $table->string('serial_number')->nullable();
-        $table->enum('type', ['rotating', 'static', 'electrical', 'instrument'])->default('rotating');
+        $table->string('head_capacity')->nullable();
+        $table->decimal('motor_kw', 8, 2)->nullable();
+        $table->integer('motor_rpm')->nullable();
+        $table->decimal('motor_ampere', 8, 2)->nullable();
         $table->enum('status', ['normal', 'warning', 'critical', 'breakdown'])->default('normal');
-        $table->text('description')->nullable();
         $table->timestamps();
     });
 }

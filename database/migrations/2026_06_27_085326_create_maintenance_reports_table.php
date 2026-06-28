@@ -15,7 +15,7 @@ return new class extends Migration
         $table->id();
         $table->foreignId('asset_id')->constrained('assets')->onDelete('cascade');
         $table->foreignId('reported_by')->constrained('employees')->onDelete('cascade');
-        $table->enum('shift', ['1', '2', '3']);
+        $table->enum('shift', ['1', '2', '3', 'reguler']);
         $table->date('tanggal');
         $table->enum('jenis', ['corrective', 'breakdown', 'inspeksi'])->default('corrective');
         $table->text('deskripsi_masalah');

@@ -19,6 +19,7 @@
             <option value="1">Shift 1</option>
             <option value="2">Shift 2</option>
             <option value="3">Shift 3</option>
+            <option value="reguler">Shift Reguler</option>
         </select>
         <select class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white" onchange="filterStatus(this.value)">
             <option value="">Semua Status</option>
@@ -121,6 +122,7 @@
                         <option value="1">Shift 1 (08-16)</option>
                         <option value="2">Shift 2 (16-24)</option>
                         <option value="3">Shift 3 (00-08)</option>
+                        <option value="reguler">Shift Reguler (08-17)</option>
                     </select>
                 </div>
                 <div>
