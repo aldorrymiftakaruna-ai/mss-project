@@ -46,7 +46,7 @@
         </tr>
     </thead>
     <tbody class="divide-y divide-gray-50">
-        @forelse($measurements as $m)
+        @forelse($cms as $m)
         @php
             $driverMaxVib = max(
                 $m->driver_de_vib_v ?? 0, $m->driver_de_vib_h ?? 0, $m->driver_de_vib_a ?? 0,

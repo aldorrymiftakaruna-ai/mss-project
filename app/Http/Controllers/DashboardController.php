@@ -5,13 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Models\MaintenanceReport;
 use App\Models\SparePart;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     public function index()
     {
         $totalAssets = Asset::count();
-        $breakdown = Asset::where('status', 'breakdown')->count();
+        $breakdown = Asset::where('status', 'danger')->count();
         $laporanHariIni = MaintenanceReport::whereDate('created_at', today())->count();
         $stokKritis = SparePart::whereColumn('stok_tersedia', '<', 'stok_minimum')->count();
         $assets = Asset::with('company')->latest()->take(8)->get();

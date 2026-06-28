@@ -8,6 +8,7 @@ use App\Http\Controllers\CmController;
 use App\Http\Controllers\SparePartController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\DssController;
+use App\Http\Controllers\SettingController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -22,3 +23,5 @@ Route::resource('cm', CmController::class);
 Route::resource('spareparts', SparePartController::class);
 Route::resource('employees', EmployeeController::class);
 Route::get('/dss', [DssController::class, 'index'])->name('dss.index');
+Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');

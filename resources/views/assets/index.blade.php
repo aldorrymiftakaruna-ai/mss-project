@@ -13,7 +13,18 @@
 </div>
 @endif
 
-{{-- Header & Add Button --}}
+@if(session('import_errors') && count(session('import_errors')))
+<div class="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm">
+    <p class="font-semibold mb-1">Beberapa baris dilewati:</p>
+    <ul class="list-disc list-inside space-y-0.5">
+        @foreach(session('import_errors') as $err)
+            <li>{{ $err }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
+
+{{-- Header & Actions --}}
 <div class="flex items-center justify-between mb-5">
     <div class="flex gap-3">
         <select class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white" onchange="filterPT(this.value)">
@@ -25,15 +36,20 @@
         <select class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white" onchange="filterStatus(this.value)">
             <option value="">Semua Status</option>
             <option value="normal">Normal</option>
-            <option value="warning">Warning</option>
-            <option value="critical">Critical</option>
-            <option value="breakdown">Breakdown</option>
+            <option value="alarm">Alarm</option>
+            <option value="danger">Danger</option>
         </select>
     </div>
-    <button onclick="document.getElementById('modal-add').classList.remove('hidden')"
-        class="bg-[#0E9E8E] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#0a7a6d] transition">
-        + Tambah Equipment
-    </button>
+    <div class="flex gap-2">
+        <a href="{{ route('assets.import.form') }}"
+           class="border border-gray-200 text-gray-600 text-sm px-4 py-2 rounded-lg hover:bg-gray-50 transition">
+            Import Excel
+        </a>
+        <button onclick="document.getElementById('modal-add').classList.remove('hidden')"
+            class="bg-[#0E9E8E] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#0a7a6d] transition">
+            + Tambah Equipment
+        </button>
+    </div>
 </div>
 
 {{-- Table --}}
@@ -45,35 +61,41 @@
                 <th class="px-5 py-3 text-left">Nama Equipment</th>
                 <th class="px-5 py-3 text-left">Model</th>
                 <th class="px-5 py-3 text-left">PT</th>
-                <th class="px-5 py-3 text-left">Tipe</th>
                 <th class="px-5 py-3 text-left">Status</th>
                 <th class="px-5 py-3 text-left">Aksi</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
             @forelse($assets as $asset)
-            <tr class="hover:bg-gray-50 asset-row" data-pt="{{ $asset->company->code }}" data-status="{{ $asset->status }}">
-                <td class="px-5 py-3 font-mono text-xs font-semibold text-gray-700">{{ $asset->tag_no }}</td>
+            <tr class="hover:bg-gray-50 asset-row"
+                data-pt="{{ $asset->company->code }}"
+                data-status="{{ $asset->status }}">
+
+                {{-- Tag No — klik → detail --}}
+                <td class="px-5 py-3">
+                    <a href="{{ route('assets.show', $asset) }}"
+                       class="font-mono text-xs font-semibold text-[#0E9E8E] hover:underline">
+                        {{ $asset->tag_no }}
+                    </a>
+                </td>
+
                 <td class="px-5 py-3 font-medium text-gray-800">{{ $asset->description }}</td>
                 <td class="px-5 py-3 text-gray-500">{{ $asset->model ?? '—' }}</td>
                 <td class="px-5 py-3 text-gray-500">{{ $asset->company->code }}</td>
-                <td class="px-5 py-3 text-gray-500 capitalize">{{ $asset->type }}</td>
+
+                {{-- Status badge 3 level --}}
                 <td class="px-5 py-3">
-                    @php
-                        $colors = [
-                            'normal' => 'bg-green-100 text-green-700',
-                            'warning' => 'bg-amber-100 text-amber-700',
-                            'critical' => 'bg-orange-100 text-orange-700',
-                            'breakdown' => 'bg-red-100 text-red-700'
-                        ];
-                    @endphp
-                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$asset->status] }}">
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $asset->statusColor() }}">
                         {{ ucfirst($asset->status) }}
                     </span>
                 </td>
-                <td class="px-5 py-3">
+
+                {{-- Aksi --}}
+                <td class="px-5 py-3 flex items-center gap-3">
+                    <a href="{{ route('assets.show', $asset) }}"
+                       class="text-[#0E9E8E] hover:underline text-xs">Detail</a>
                     <form action="{{ route('assets.destroy', $asset) }}" method="POST"
-                        onsubmit="return confirm('Hapus equipment ini?')">
+                        onsubmit="return confirm('Hapus equipment {{ $asset->tag_no }}?')">
                         @csrf @method('DELETE')
                         <button class="text-red-400 hover:text-red-600 text-xs">Hapus</button>
                     </form>
@@ -90,10 +112,11 @@
 
 {{-- Modal Tambah --}}
 <div id="modal-add" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-    <div class="bg-white rounded-xl w-full max-w-lg p-6">
+    <div class="bg-white rounded-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-5">
             <h3 class="font-semibold text-gray-800">Tambah Equipment</h3>
-            <button onclick="document.getElementById('modal-add').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
+            <button onclick="document.getElementById('modal-add').classList.add('hidden')"
+                class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
         <form action="{{ route('assets.store') }}" method="POST" class="space-y-4">
             @csrf
@@ -109,12 +132,12 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-500 mb-1 block">Tag No *</label>
-                    <input type="text" name="tag_no" required placeholder="SC14, P-6163P7"
+                    <input type="text" name="tag_no" required placeholder="P-6163P7"
                         class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 </div>
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Nama Equipment *</label>
-                    <input type="text" name="name" required placeholder="Screw Feeder"
+                <div class="col-span-2">
+                    <label class="text-xs text-gray-500 mb-1 block">Nama / Deskripsi Equipment *</label>
+                    <input type="text" name="description" required placeholder="Screw Feeder PKFA"
                         class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 </div>
                 <div>
@@ -123,27 +146,34 @@
                         class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Brand</label>
-                    <input type="text" name="brand"
+                    <label class="text-xs text-gray-500 mb-1 block">Serial Number</label>
+                    <input type="text" name="serial_number"
                         class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Tipe</label>
-                    <select name="type" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                        <option value="rotating">Rotating</option>
-                        <option value="static">Static</option>
-                        <option value="electrical">Electrical</option>
-                        <option value="instrument">Instrument</option>
-                    </select>
+                    <label class="text-xs text-gray-500 mb-1 block">Head / Capacity</label>
+                    <input type="text" name="head_capacity" placeholder="50 m³/h"
+                        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Motor kW</label>
+                    <input type="number" step="0.01" name="motor_kw"
+                        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Motor RPM</label>
+                    <input type="number" name="motor_rpm"
+                        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Motor Ampere (FLA)</label>
+                    <input type="number" step="0.01" name="motor_ampere"
+                        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 </div>
             </div>
-            <div>
-                <label class="text-xs text-gray-500 mb-1 block">Deskripsi</label>
-                <textarea name="description" rows="2"
-                    class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
-            </div>
             <div class="flex gap-3 pt-2">
-                <button type="submit" class="flex-1 bg-[#0E9E8E] text-white py-2 rounded-lg text-sm hover:bg-[#0a7a6d] transition">
+                <button type="submit"
+                    class="flex-1 bg-[#0E9E8E] text-white py-2 rounded-lg text-sm hover:bg-[#0a7a6d] transition">
                     Simpan
                 </button>
                 <button type="button" onclick="document.getElementById('modal-add').classList.add('hidden')"
