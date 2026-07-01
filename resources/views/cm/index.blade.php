@@ -882,7 +882,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Kalo yang diklik link, jangan di-intercept
         if (e.target.closest('a')) return;
         var id = row.dataset.id;
-        if (id) window.location.href = '{{ route("cm.findings.index") }}/findings/' + id;
+        if (id) window.location.href = '{{ route("cm.index") }}/findings/' + id;
     });
 });
 </script>
