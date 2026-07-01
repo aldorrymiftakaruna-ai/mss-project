@@ -134,25 +134,22 @@ use Illuminate\Support\Facades\Storage;
 $findingsJson = $findings->map(function($f) {
     return [
         'id'                => $f->id,
+        'finding_code'      => $f->finding_code,
         'asset_tag'         => $f->asset->tag_no ?? '—',
         'asset_desc'        => $f->asset->description ?? '—',
         'company_code'      => $f->asset->company->code ?? '—',
         'asset_id'          => $f->asset_id,
         'tanggal'           => $f->tanggal->format('Y-m-d'),
         'tanggal_label'     => $f->tanggal->format('d M Y'),
-        'kategori'          => $f->kategori,
-        'severity'          => $f->severity,
-        'status'            => $f->status,
-        'deskripsi'         => $f->deskripsi ?? '',
+        'kategori'          => $f->kategori ?? '',
+        'severity'          => $f->severity ?? '',
+        'status'            => $f->status ?? 'open',
         'analysis'          => $f->analysis ?? '',
         'action'            => $f->action ?? '',
-        'pic_name'          => $f->pic->name ?? '—',
-        'pic_id'            => $f->pic_id,
+        'pic'               => $f->pic ?? '',
         'date_action'       => $f->date_action ? $f->date_action->format('Y-m-d') : '',
         'date_action_label' => $f->date_action ? $f->date_action->format('d M Y') : '—',
         'remark'            => $f->remark ?? '',
-        'reporter'          => $f->reporter->name ?? '—',
-        'reported_by'       => $f->reported_by,
         'foto_1'            => $f->foto_path   ? Storage::url($f->foto_path)   : null,
         'foto_2'            => $f->foto_path_2 ? Storage::url($f->foto_path_2) : null,
         'foto_3'            => $f->foto_path_3 ? Storage::url($f->foto_path_3) : null,
@@ -170,24 +167,27 @@ var findingsData = @json($findingsJson);
         @forelse($findings as $f)
         @php
             $scColors = ['low'=>'bg-green-100 text-green-700','medium'=>'bg-amber-100 text-amber-700','high'=>'bg-red-100 text-red-700'];
-            $stColors = ['open'=>'bg-red-100 text-red-700','acknowledged'=>'bg-amber-100 text-amber-700','resolved'=>'bg-green-100 text-green-700'];
+            $stColors = ['open'=>'bg-red-100 text-red-700','closed'=>'bg-green-100 text-green-700'];
         @endphp
-        <div onclick="openDetail({{ $f->id }})"
-             class="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:shadow-md hover:border-gray-300 transition">
+        <a href="{{ route('cm.findings.show', $f) }}"
+             class="block bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:shadow-md hover:border-gray-300 transition">
             <div class="flex items-start justify-between mb-2">
                 <div class="flex-1 min-w-0 pr-2">
                     <p class="font-medium text-gray-800 truncate">{{ $f->asset->tag_no ?? '—' }}</p>
+                    <p class="text-[10px] text-gray-400 font-mono">{{ $f->finding_code }}</p>
                     <p class="text-xs text-gray-400 truncate">{{ $f->asset->description ?? '—' }} &middot; {{ $f->asset->company->code ?? '—' }}</p>
                 </div>
                 <div class="flex gap-1.5 flex-shrink-0">
-                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $scColors[$f->severity] ?? 'bg-gray-100' }}">{{ ucfirst($f->severity) }}</span>
-                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $stColors[$f->status] ?? 'bg-gray-100' }}">{{ ucfirst($f->status) }}</span>
+                    @if($f->severity)
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $scColors[$f->severity] ?? 'bg-gray-100 text-gray-500' }}">{{ ucfirst($f->severity) }}</span>
+                    @endif
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $stColors[$f->status] ?? 'bg-gray-100 text-gray-500' }}">{{ ucfirst($f->status ?? 'open') }}</span>
                 </div>
             </div>
-            <p class="text-xs text-gray-500 mb-1 capitalize">{{ str_replace('_', ' ', $f->kategori) }} &middot; {{ $f->tanggal->format('d M Y') }}</p>
-            <p class="text-sm text-gray-600 line-clamp-2">{{ $f->deskripsi ?? '—' }}</p>
-            <p class="text-xs text-gray-400 mt-2">Dilaporkan: {{ $f->reporter->name ?? '—' }}</p>
-        </div>
+            <p class="text-xs text-gray-500 mb-1">{{ $f->kategori ?: '—' }} &middot; {{ $f->tanggal->format('d M Y') }}</p>
+            <p class="text-sm text-gray-600 line-clamp-2">{{ $f->analysis ?: '—' }}</p>
+            <p class="text-xs text-gray-400 mt-2">PIC: {{ $f->pic ?? '—' }}</p>
+        </a>
         @empty
         <div class="xl:col-span-3 md:col-span-2 bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-400 text-sm">
             Belum ada temuan visual.
@@ -213,13 +213,8 @@ var findingsData = @json($findingsJson);
             <div class="flex gap-2 flex-wrap">
                 <span id="detail-badge-severity" class="px-3 py-1 rounded-full text-xs font-medium"></span>
                 <span id="detail-badge-status" class="px-3 py-1 rounded-full text-xs font-medium"></span>
-                <span id="detail-kategori" class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 capitalize"></span>
+                <span id="detail-kategori" class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"></span>
                 <span id="detail-tanggal" class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"></span>
-            </div>
-            {{-- Deskripsi --}}
-            <div>
-                <p class="text-xs text-gray-400 mb-1">Deskripsi Temuan</p>
-                <p id="detail-deskripsi" class="text-sm text-gray-700"></p>
             </div>
             {{-- Analysis & Action --}}
             <div class="grid grid-cols-2 gap-4">
@@ -232,8 +227,8 @@ var findingsData = @json($findingsJson);
                     <p id="detail-action" class="text-sm text-gray-700">—</p>
                 </div>
             </div>
-            {{-- PIC & Date Action & Remark --}}
-            <div class="grid grid-cols-3 gap-4">
+            {{-- PIC & Date Action --}}
+            <div class="grid grid-cols-2 gap-4">
                 <div>
                     <p class="text-xs text-gray-400 mb-1">PIC</p>
                     <p id="detail-pic" class="text-sm text-gray-700">—</p>
@@ -241,10 +236,6 @@ var findingsData = @json($findingsJson);
                 <div>
                     <p class="text-xs text-gray-400 mb-1">Date Action</p>
                     <p id="detail-date-action" class="text-sm text-gray-700">—</p>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-400 mb-1">Dilaporkan</p>
-                    <p id="detail-reporter" class="text-sm text-gray-700">—</p>
                 </div>
             </div>
             {{-- Remark --}}
@@ -301,39 +292,15 @@ var findingsData = @json($findingsJson);
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Dilaporkan Oleh</label>
-                    <select name="reported_by" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                        <option value="">Pilih Teknisi</option>
-                        @foreach($employees as $emp)
-                        <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Status</label>
-                    <select name="status" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                        <option value="open">Open</option>
-                        <option value="acknowledged">Acknowledged</option>
-                        <option value="resolved">Resolved</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Kategori</label>
-                    <select name="kategori" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                        <option value="korosi">Korosi</option>
-                        <option value="kebocoran">Kebocoran</option>
-                        <option value="baut_loose">Baut Loose</option>
-                        <option value="guard_lepas">Guard Lepas</option>
-                        <option value="abnormal_suara">Abnormal Suara</option>
-                        <option value="lainnya">Lainnya</option>
-                    </select>
+                    <label class="text-xs text-gray-500 mb-1 block">Kategori Finding</label>
+                    <input type="text" name="kategori" placeholder="Contoh: Noise, Leak, Corosion"
+                        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                    <p class="text-[10px] text-gray-400 mt-1">Bisa isi lebih dari satu, pisahkan dengan koma.</p>
                 </div>
                 <div>
                     <label class="text-xs text-gray-500 mb-1 block">Severity</label>
                     <select name="severity" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="">— Tidak diisi —</option>
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
@@ -341,9 +308,23 @@ var findingsData = @json($findingsJson);
                 </div>
             </div>
 
-            <div>
-                <label class="text-xs text-gray-500 mb-1 block">Deskripsi</label>
-                <textarea name="deskripsi" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">PIC</label>
+                    <select name="pic" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Pilih PIC</option>
+                        <option value="Mechanic">Mechanic</option>
+                        <option value="Electric">Electric</option>
+                        <option value="Production">Production</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Status</label>
+                    <select name="status" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="open">Open</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
@@ -357,20 +338,9 @@ var findingsData = @json($findingsJson);
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">PIC Tindak Lanjut</label>
-                    <select name="pic_id" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                        <option value="">Pilih PIC</option>
-                        @foreach($employees as $emp)
-                        <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Date Action</label>
-                    <input type="date" name="date_action" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                </div>
+            <div>
+                <label class="text-xs text-gray-500 mb-1 block">Date Action</label>
+                <input type="date" name="date_action" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
             </div>
 
             <div>
@@ -506,47 +476,38 @@ var findingsData = @json($findingsJson);
             <div id="fields-finding" class="space-y-4 hidden">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs text-gray-500 mb-1 block">Dilaporkan Oleh</label>
-                        <select name="reported_by" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                            <option value="">Pilih Teknisi</option>
-                            @foreach($employees as $emp)
-                            <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block">Status</label>
-                        <select name="status" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                            <option value="open">Open</option>
-                            <option value="acknowledged">Acknowledged</option>
-                            <option value="resolved">Resolved</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block">Kategori</label>
-                        <select name="kategori" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                            <option value="korosi">Korosi</option>
-                            <option value="kebocoran">Kebocoran</option>
-                            <option value="baut_loose">Baut Loose</option>
-                            <option value="guard_lepas">Guard Lepas</option>
-                            <option value="abnormal_suara">Abnormal Suara</option>
-                            <option value="lainnya">Lainnya</option>
-                        </select>
+                        <label class="text-xs text-gray-500 mb-1 block">Kategori Finding</label>
+                        <input type="text" name="kategori" placeholder="Contoh: Noise, Leak, Corosion"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <p class="text-[10px] text-gray-400 mt-1">Bisa isi lebih dari satu, pisahkan dengan koma.</p>
                     </div>
                     <div>
                         <label class="text-xs text-gray-500 mb-1 block">Severity</label>
                         <select name="severity" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                            <option value="">— Tidak diisi —</option>
                             <option value="low">Low</option>
                             <option value="medium">Medium</option>
                             <option value="high">High</option>
                         </select>
                     </div>
                 </div>
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Deskripsi</label>
-                    <textarea name="deskripsi" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">PIC</label>
+                        <select name="pic" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Pilih PIC</option>
+                            <option value="Mechanic">Mechanic</option>
+                            <option value="Electric">Electric</option>
+                            <option value="Production">Production</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">Status</label>
+                        <select name="status" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                            <option value="open">Open</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -558,20 +519,9 @@ var findingsData = @json($findingsJson);
                         <textarea name="action" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block">PIC Tindak Lanjut</label>
-                        <select name="pic_id" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                            <option value="">Pilih PIC</option>
-                            @foreach($employees as $emp)
-                            <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block">Date Action</label>
-                        <input type="date" name="date_action" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                    </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Date Action</label>
+                    <input type="date" name="date_action" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 </div>
                 <div>
                     <label class="text-xs text-gray-500 mb-1 block">Remark</label>
@@ -732,9 +682,8 @@ var scBadge = {
     high:   'bg-red-100 text-red-700'
 };
 var stBadge = {
-    open:         'bg-red-100 text-red-700',
-    acknowledged: 'bg-amber-100 text-amber-700',
-    resolved:     'bg-green-100 text-green-700'
+    open:   'bg-red-100 text-red-700',
+    closed: 'bg-green-100 text-green-700'
 };
 
 function findingById(id) {
@@ -748,22 +697,26 @@ function openDetail(id) {
 
     document.getElementById('detail-asset-tag').textContent  = f.asset_tag;
     document.getElementById('detail-asset-desc').textContent = f.asset_desc + ' · ' + f.company_code;
-    document.getElementById('detail-deskripsi').textContent  = f.deskripsi || '—';
     document.getElementById('detail-analysis').textContent   = f.analysis  || '—';
     document.getElementById('detail-action').textContent     = f.action    || '—';
-    document.getElementById('detail-pic').textContent        = f.pic_name;
+    document.getElementById('detail-pic').textContent        = f.pic || '—';
     document.getElementById('detail-date-action').textContent = f.date_action_label;
-    document.getElementById('detail-reporter').textContent   = f.reporter;
 
     var sev = document.getElementById('detail-badge-severity');
-    sev.textContent  = f.severity.charAt(0).toUpperCase() + f.severity.slice(1);
-    sev.className    = 'px-3 py-1 rounded-full text-xs font-medium ' + (scBadge[f.severity] || 'bg-gray-100 text-gray-600');
+    if (f.severity) {
+        sev.textContent  = f.severity.charAt(0).toUpperCase() + f.severity.slice(1);
+        sev.className    = 'px-3 py-1 rounded-full text-xs font-medium ' + (scBadge[f.severity] || 'bg-gray-100 text-gray-600');
+        sev.classList.remove('hidden');
+    } else {
+        sev.classList.add('hidden');
+    }
 
     var sta = document.getElementById('detail-badge-status');
-    sta.textContent  = f.status.charAt(0).toUpperCase() + f.status.slice(1);
-    sta.className    = 'px-3 py-1 rounded-full text-xs font-medium ' + (stBadge[f.status] || 'bg-gray-100 text-gray-600');
+    var status = f.status || 'open';
+    sta.textContent  = status.charAt(0).toUpperCase() + status.slice(1);
+    sta.className    = 'px-3 py-1 rounded-full text-xs font-medium ' + (stBadge[status] || 'bg-gray-100 text-gray-600');
 
-    document.getElementById('detail-kategori').textContent = f.kategori.replace(/_/g, ' ');
+    document.getElementById('detail-kategori').textContent = f.kategori || '—';
     document.getElementById('detail-tanggal').textContent  = f.tanggal_label;
 
     // Remark
@@ -810,16 +763,14 @@ function openEdit(id) {
     form.action = f.update_url;
 
     // Isi field
-    form.querySelector('[name="asset_id"]').value     = f.asset_id;
+    form.querySelector('[name="asset_id"]').value    = f.asset_id;
     form.querySelector('[name="tanggal"]').value      = f.tanggal;
-    form.querySelector('[name="reported_by"]').value  = f.reported_by || '';
-    form.querySelector('[name="status"]').value       = f.status;
     form.querySelector('[name="kategori"]').value     = f.kategori;
-    form.querySelector('[name="severity"]').value     = f.severity;
-    form.querySelector('[name="deskripsi"]').value    = f.deskripsi;
+    form.querySelector('[name="severity"]').value     = f.severity || '';
+    form.querySelector('[name="pic"]').value          = f.pic || '';
+    form.querySelector('[name="status"]').value        = f.status || 'open';
     form.querySelector('[name="analysis"]').value     = f.analysis;
     form.querySelector('[name="action"]').value       = f.action;
-    form.querySelector('[name="pic_id"]').value       = f.pic_id || '';
     form.querySelector('[name="date_action"]').value  = f.date_action || '';
     form.querySelector('[name="remark"]').value       = f.remark;
 

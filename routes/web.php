@@ -32,6 +32,7 @@ Route::get('/cm/trend-data', [CmController::class, 'trendData'])->name('cm.trend
 Route::get('/cm/findings/template', [CmController::class, 'downloadTemplateFinding'])->name('cm.findings.template');
 Route::get('/cm/findings/import', [CmController::class, 'importFindingForm'])->name('cm.findings.import.form');
 Route::post('/cm/findings/import', [CmController::class, 'importFinding'])->name('cm.findings.import');
+Route::get('/cm/findings/{cmFinding}', [CmController::class, 'showFinding'])->name('cm.findings.show');
 Route::delete('/cm/findings/{cmFinding}', [CmController::class, 'destroyFinding'])->name('cm.findings.destroy');
 Route::put('/cm/findings/{cmFinding}', [CmController::class, 'updateFinding'])->name('cm.findings.update');
 Route::resource('cm', CmController::class)->except(['show']);

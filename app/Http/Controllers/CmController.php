@@ -17,7 +17,7 @@ class CmController extends Controller
     public function index()
     {
         $cms       = CmMeasurement::with('asset.company')->latest('tanggal')->get();
-        $findings  = CmFinding::with(['asset.company', 'reporter', 'pic'])->latest('tanggal')->get();
+        $findings  = CmFinding::with(['asset.company'])->latest('tanggal')->get();
         $assets    = Asset::with('company')->orderBy('tag_no')->get();
         $employees = Employee::orderBy('name')->get();
 
@@ -148,16 +148,14 @@ class CmController extends Controller
         $latestDataDate = CmMeasurement::max('tanggal');
         $refDate = $latestDataDate ? Carbon::parse($latestDataDate) : $now;
 
-        // Validasi range: bisa "12", "6", "3", atau custom "start" + "end"
         $range = $request->input('range', '12');
-        $startMonth = $request->input('start'); // format YYYY-MM
-        $endMonth = $request->input('end');     // format YYYY-MM
+        $startMonth = $request->input('start');
+        $endMonth = $request->input('end');
 
         if (in_array($range, ['3', '6', '12'])) {
             $monthsCount = (int) $range;
             $startDate = $refDate->copy()->subMonths($monthsCount - 1)->startOfMonth();
         } elseif ($startMonth && $endMonth) {
-            // Validasi format YYYY-MM
             if (!preg_match('/^\d{4}-\d{2}$/', $startMonth) || !preg_match('/^\d{4}-\d{2}$/', $endMonth)) {
                 return response()->json(['error' => 'Format rentang tanggal tidak valid.'], 422);
             }
@@ -171,14 +169,12 @@ class CmController extends Controller
             return response()->json(['error' => 'Parameter range tidak valid.'], 422);
         }
 
-        // Query CM dalam rentang
         $query = CmMeasurement::with('asset')->where('tanggal', '>=', $startDate);
         if (isset($endDate)) {
             $query->where('tanggal', '<=', $endDate);
         }
         $recentCms = $query->latest('tanggal')->get();
 
-        // Hitung summary
         $totalRecords = $recentCms->count();
         $alarmCount = 0; $dangerCount = 0; $goodCount = 0;
         foreach ($recentCms as $cm) {
@@ -190,7 +186,6 @@ class CmController extends Controller
             else $goodCount++;
         }
 
-        // Generate label bulan dari startDate sampai refDate
         $months = [];
         $cursor = $startDate->copy()->startOfMonth();
         $endCursor = isset($endDate) ? $endDate->copy()->startOfMonth() : $refDate->copy()->startOfMonth();
@@ -239,6 +234,22 @@ class CmController extends Controller
         return $request->file($inputName)->store('cm_findings', 'public');
     }
 
+    private function generateFindingCode(string $tanggal): string
+    {
+        $year   = Carbon::parse($tanggal)->format('Y');
+        $prefix = "VIDR-{$year}-";
+        $count  = CmFinding::where('finding_code', 'like', $prefix . '%')->count();
+        return $prefix . str_pad($count + 1, 5, '0', STR_PAD_LEFT);
+    }
+
+    public function showFinding(CmFinding $cmFinding)
+    {
+        $cmFinding->load('asset.company');
+        $assets = Asset::with('company')->orderBy('tag_no')->get();
+
+        return view('cm.findings-show', compact('cmFinding', 'assets'));
+    }
+
     /**
      * Helper: hapus file lama dari storage (dipanggil saat update mengganti foto).
      */
@@ -257,26 +268,29 @@ class CmController extends Controller
             $request->validate([
                 'asset_id'    => 'required|exists:assets,id',
                 'tanggal'     => 'required|date',
-                'kategori'    => 'required|string',
-                'severity'    => 'required|in:low,medium,high',
-                'foto_1'      => 'nullable|image|max:4096',
-                'foto_2'      => 'nullable|image|max:4096',
-                'foto_3'      => 'nullable|image|max:4096',
+                'kategori'    => 'nullable|string|max:255',
+                'severity'    => 'nullable|in:low,medium,high',
+                'status'      => 'nullable|in:open,closed',
+                'pic'         => 'nullable|in:Mechanic,Electric,Production',
+                'analysis'    => 'nullable|string',
+                'action'      => 'nullable|string',
+                'remark'      => 'nullable|string',
+                'foto_1'      => 'nullable|image|max:2048',
+                'foto_2'      => 'nullable|image|max:2048',
+                'foto_3'      => 'nullable|image|max:2048',
                 'date_action' => 'nullable|date',
-                'pic_id'      => 'nullable|exists:employees,id',
             ]);
 
             CmFinding::create([
+                'finding_code' => $this->generateFindingCode($request->tanggal),
                 'asset_id'    => $request->asset_id,
                 'tanggal'     => $request->tanggal,
-                'reported_by' => $request->reported_by ?: null,
                 'kategori'    => $request->kategori,
-                'severity'    => $request->severity,
-                'deskripsi'   => $request->deskripsi,
+                'severity'    => $request->severity ?: null,
                 'status'      => $request->input('status', 'open'),
                 'analysis'    => $request->analysis ?: null,
                 'action'      => $request->action ?: null,
-                'pic_id'      => $request->pic_id ?: null,
+                'pic'         => $request->pic ?: null,
                 'date_action' => $request->date_action ?: null,
                 'remark'      => $request->remark ?: null,
                 'foto_path'   => $this->storeFindingPhoto($request, 'foto_1'),
@@ -330,34 +344,35 @@ class CmController extends Controller
     }
 
     /**
-     * Update data temuan visual yang sudah ada (dipanggil dari modal Edit).
+     * Update data temuan visual yang sudah ada (dipanggil dari halaman detail).
      */
     public function updateFinding(Request $request, CmFinding $cmFinding)
     {
         $request->validate([
             'asset_id'    => 'required|exists:assets,id',
             'tanggal'     => 'required|date',
-            'kategori'    => 'required|string',
-            'severity'    => 'required|in:low,medium,high',
-            'status'      => 'required|in:open,acknowledged,resolved',
-            'foto_1'      => 'nullable|image|max:4096',
-            'foto_2'      => 'nullable|image|max:4096',
-            'foto_3'      => 'nullable|image|max:4096',
+            'kategori'    => 'nullable|string|max:255',
+            'severity'    => 'nullable|in:low,medium,high',
+            'status'      => 'nullable|in:open,closed',
+            'pic'         => 'nullable|in:Mechanic,Electric,Production',
+            'analysis'    => 'nullable|string',
+            'action'      => 'nullable|string',
+            'remark'      => 'nullable|string',
+            'foto_1'      => 'nullable|image|max:2048',
+            'foto_2'      => 'nullable|image|max:2048',
+            'foto_3'      => 'nullable|image|max:2048',
             'date_action' => 'nullable|date',
-            'pic_id'      => 'nullable|exists:employees,id',
         ]);
 
         $data = [
             'asset_id'    => $request->asset_id,
             'tanggal'     => $request->tanggal,
-            'reported_by' => $request->reported_by ?: null,
             'kategori'    => $request->kategori,
-            'severity'    => $request->severity,
-            'deskripsi'   => $request->deskripsi,
+            'severity'    => $request->severity ?: null,
             'status'      => $request->status,
             'analysis'    => $request->analysis ?: null,
             'action'      => $request->action ?: null,
-            'pic_id'      => $request->pic_id ?: null,
+            'pic'         => $request->pic ?: null,
             'date_action' => $request->date_action ?: null,
             'remark'      => $request->remark ?: null,
         ];
@@ -378,7 +393,7 @@ class CmController extends Controller
 
         $cmFinding->update($data);
 
-        return redirect()->route('cm.index')
+        return redirect()->route('cm.findings.show', $cmFinding)
             ->with('success', 'Temuan visual berhasil diperbarui.');
     }
 
@@ -404,113 +419,105 @@ class CmController extends Controller
     }
 
     public function import(Request $request)
-{
-    $request->validate(['file' => 'required|mimes:xlsx,xls|max:10240']);
+    {
+        $request->validate(['file' => 'required|mimes:xlsx,xls|max:10240']);
 
-    $spreadsheet = IOFactory::load($request->file('file')->getPathname());
-    $sheet       = $spreadsheet->getActiveSheet();
-    $rows        = $sheet->toArray();
+        $spreadsheet = IOFactory::load($request->file('file')->getPathname());
+        $sheet       = $spreadsheet->getActiveSheet();
+        $rows        = $sheet->toArray();
 
-    $imported = 0;
-    $skipped  = 0;
-    $errors   = [];
+        $imported = 0;
+        $skipped  = 0;
+        $errors   = [];
 
-    $getNum = function ($val) {
-        if ($val === null || $val === '') return null;
-        $val = str_replace(',', '.', trim((string) $val));
-        return is_numeric($val) ? (float) $val : null;
-    };
+        $getNum = function ($val) {
+            if ($val === null || $val === '') return null;
+            $val = str_replace(',', '.', trim((string) $val));
+            return is_numeric($val) ? (float) $val : null;
+        };
 
-    foreach ($rows as $i => $row) {
-        if ($i === 0) continue;
+        foreach ($rows as $i => $row) {
+            if ($i === 0) continue;
 
-        $tanggalExcel = trim($row[0] ?? '');
-        $tagNo        = trim($row[1] ?? '');
+            $tanggalExcel = trim($row[0] ?? '');
+            $tagNo        = trim($row[1] ?? '');
 
-        if (empty($tanggalExcel) || empty($tagNo)) continue;
+            if (empty($tanggalExcel) || empty($tagNo)) continue;
 
-        $asset = Asset::where('tag_no', $tagNo)->first();
-        if (!$asset) {
-            $errors[] = "Baris " . ($i + 1) . ": Equipment '$tagNo' tidak ditemukan.";
-            $skipped++;
-            continue;
+            $asset = Asset::where('tag_no', $tagNo)->first();
+            if (!$asset) {
+                $errors[] = "Baris " . ($i + 1) . ": Equipment '$tagNo' tidak ditemukan.";
+                $skipped++;
+                continue;
+            }
+
+            try {
+                $tanggal = null;
+
+                if (is_numeric($tanggalExcel)) {
+                    $tanggal = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($tanggalExcel)->format('Y-m-d');
+                } elseif (preg_match('/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/', $tanggalExcel)) {
+                    $tanggal = Carbon::parse($tanggalExcel)->format('Y-m-d');
+                } elseif (preg_match('/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/', $tanggalExcel)) {
+                    $dt = \DateTime::createFromFormat('d/m/Y', $tanggalExcel);
+                    if (!$dt) $dt = \DateTime::createFromFormat('d-m-Y', $tanggalExcel);
+                    if (!$dt) $dt = \DateTime::createFromFormat('m/d/Y', $tanggalExcel);
+                    $tanggal = $dt ? $dt->format('Y-m-d') : null;
+                } else {
+                    $tanggal = Carbon::parse($tanggalExcel)->format('Y-m-d');
+                }
+
+                if ($tanggal === null) throw new \Exception('Gagal parse');
+            } catch (\Exception $e) {
+                $errors[] = "Baris " . ($i + 1) . ": Format tanggal '$tanggalExcel' tidak valid.";
+                $skipped++;
+                continue;
+            }
+
+            try {
+                CmMeasurement::create([
+                    'tanggal'          => $tanggal,
+                    'asset_id'         => $asset->id,
+                    'measured_by'      => null,
+                    'driver_de_vib_v'  => $getNum($row[3] ?? null),
+                    'driver_de_vib_h'  => $getNum($row[4] ?? null),
+                    'driver_de_vib_a'  => $getNum($row[5] ?? null),
+                    'driver_de_cf'     => $getNum($row[6] ?? null),
+                    'driver_de_temp'   => $getNum($row[7] ?? null),
+                    'driver_nde_vib_v' => $getNum($row[8] ?? null),
+                    'driver_nde_vib_h' => $getNum($row[9] ?? null),
+                    'driver_nde_vib_a' => $getNum($row[10] ?? null),
+                    'driver_nde_cf'    => $getNum($row[11] ?? null),
+                    'driver_nde_temp'  => $getNum($row[12] ?? null),
+                    'driver_ampere'    => $getNum($row[13] ?? null),
+                    'driven_de_vib_v'  => $getNum($row[14] ?? null),
+                    'driven_de_vib_h'  => $getNum($row[15] ?? null),
+                    'driven_de_vib_a'  => $getNum($row[16] ?? null),
+                    'driven_de_cf'     => $getNum($row[17] ?? null),
+                    'driven_de_temp'   => $getNum($row[18] ?? null),
+                    'driven_nde_vib_v' => $getNum($row[19] ?? null),
+                    'driven_nde_vib_h' => $getNum($row[20] ?? null),
+                    'driven_nde_vib_a' => $getNum($row[21] ?? null),
+                    'driven_nde_cf'    => $getNum($row[22] ?? null),
+                    'driven_nde_temp'  => $getNum($row[23] ?? null),
+                    'catatan'          => trim($row[24] ?? ''),
+                ]);
+
+                $asset->refreshStatus();
+                $imported++;
+            } catch (\Exception $e) {
+                $errors[] = "Baris " . ($i + 1) . ": Gagal simpan — " . $e->getMessage();
+                $skipped++;
+            }
         }
 
-        // Parse tanggal — handle berbagai format input dari Excel
-        try {
-            $tanggal = null;
+        $msg = "Import selesai: {$imported} data pengukuran ditambahkan.";
+        if ($skipped > 0) $msg .= " ({$skipped} baris dilewati).";
 
-            // 1. Excel serial number (numeric)
-            if (is_numeric($tanggalExcel)) {
-                $tanggal = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($tanggalExcel)->format('Y-m-d');
-            }
-            // 2. String ISO "YYYY-MM-DD" atau "YYYY/MM/DD"
-            elseif (preg_match('/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/', $tanggalExcel)) {
-                $tanggal = Carbon::parse($tanggalExcel)->format('Y-m-d');
-            }
-            // 3. String "DD/MM/YYYY" atau "DD-MM-YYYY"
-            elseif (preg_match('/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/', $tanggalExcel)) {
-                $dt = \DateTime::createFromFormat('d/m/Y', $tanggalExcel);
-                if (!$dt) $dt = \DateTime::createFromFormat('d-m-Y', $tanggalExcel);
-                if (!$dt) $dt = \DateTime::createFromFormat('m/d/Y', $tanggalExcel);
-                $tanggal = $dt ? $dt->format('Y-m-d') : null;
-            }
-            // 4. Fallback: biarkan Carbon mencoba segala format
-            else {
-                $tanggal = Carbon::parse($tanggalExcel)->format('Y-m-d');
-            }
-
-            if ($tanggal === null) throw new \Exception('Gagal parse');
-        } catch (\Exception $e) {
-            $errors[] = "Baris " . ($i + 1) . ": Format tanggal '$tanggalExcel' tidak valid.";
-            $skipped++;
-            continue;
-        }
-
-        try {
-            CmMeasurement::create([
-                'tanggal'          => $tanggal,
-                'asset_id'         => $asset->id,
-                'measured_by'      => null,
-                'driver_de_vib_v'  => $getNum($row[3] ?? null),
-                'driver_de_vib_h'  => $getNum($row[4] ?? null),
-                'driver_de_vib_a'  => $getNum($row[5] ?? null),
-                'driver_de_cf'     => $getNum($row[6] ?? null),
-                'driver_de_temp'   => $getNum($row[7] ?? null),
-                'driver_nde_vib_v' => $getNum($row[8] ?? null),
-                'driver_nde_vib_h' => $getNum($row[9] ?? null),
-                'driver_nde_vib_a' => $getNum($row[10] ?? null),
-                'driver_nde_cf'    => $getNum($row[11] ?? null),
-                'driver_nde_temp'  => $getNum($row[12] ?? null),
-                'driver_ampere'    => $getNum($row[13] ?? null),
-                'driven_de_vib_v'  => $getNum($row[14] ?? null),
-                'driven_de_vib_h'  => $getNum($row[15] ?? null),
-                'driven_de_vib_a'  => $getNum($row[16] ?? null),
-                'driven_de_cf'     => $getNum($row[17] ?? null),
-                'driven_de_temp'   => $getNum($row[18] ?? null),
-                'driven_nde_vib_v' => $getNum($row[19] ?? null),
-                'driven_nde_vib_h' => $getNum($row[20] ?? null),
-                'driven_nde_vib_a' => $getNum($row[21] ?? null),
-                'driven_nde_cf'    => $getNum($row[22] ?? null),
-                'driven_nde_temp'  => $getNum($row[23] ?? null),
-                'catatan'          => trim($row[24] ?? ''),
-            ]);
-
-            $asset->refreshStatus();
-            $imported++;
-        } catch (\Exception $e) {
-            $errors[] = "Baris " . ($i + 1) . ": Gagal simpan — " . $e->getMessage();
-            $skipped++;
-        }
+        return redirect()->back()
+            ->with('success', $msg)
+            ->with('import_errors', $errors);
     }
-
-    $msg = "Import selesai: {$imported} data pengukuran ditambahkan.";
-    if ($skipped > 0) $msg .= " ({$skipped} baris dilewati).";
-
-    return redirect()->back()
-        ->with('success', $msg)
-        ->with('import_errors', $errors);
-}
 
     public function importForm()
     {
@@ -558,13 +565,13 @@ class CmController extends Controller
         $sheet->setTitle('Template_Finding');
 
         $headers = [
-            'Tanggal (YYYY-MM-DD)', 'Tag No Equipment', 'Kategori', 'Severity (low/medium/high)',
-            'Deskripsi', 'Analysis', 'Action', 'PIC (Nama)', 'Date Action (YYYY-MM-DD)', 'Remark',
+            'Tanggal (YYYY-MM-DD)', 'Tag No Equipment', 'Kategori Finding', 'Severity (low/medium/high)',
+            'Analysis', 'Action', 'PIC', 'Date Action (YYYY-MM-DD)', 'Remark',
         ];
 
         $sheet->fromArray($headers, null, 'A1');
 
-        foreach (range('A', 'J') as $col) {
+        foreach (range('A', 'I') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -597,6 +604,11 @@ class CmController extends Controller
         }
     }
 
+    /**
+     * Import temuan visual dari Excel.
+     * Kolom: Tanggal, Tag No Equipment, Kategori Finding, Severity, Analysis, Action, PIC, Date Action, Remark
+     * Equipment yang tag_no-nya tidak terdaftar di tabel assets otomatis dilewati.
+     */
     public function importFinding(Request $request)
     {
         $request->validate(['file' => 'required|mimes:xlsx,xls|max:10240']);
@@ -609,6 +621,8 @@ class CmController extends Controller
         $skipped  = 0;
         $errors   = [];
 
+        $validPics = ['Mechanic', 'Electric', 'Production'];
+
         foreach ($rows as $i => $row) {
             if ($i === 0) continue;
 
@@ -617,6 +631,7 @@ class CmController extends Controller
 
             if (empty($tanggalRaw) || empty($tagNo)) continue;
 
+            // Equipment yang tidak ada di list assets (Equipment_Import) diabaikan sesuai ketentuan
             $asset = Asset::where('tag_no', $tagNo)->first();
             if (!$asset) {
                 $skipped++;
@@ -630,38 +645,32 @@ class CmController extends Controller
                 continue;
             }
 
-            $kategori = trim($row[2] ?? '');
-            if (empty($kategori)) {
-                $errors[] = "Baris " . ($i + 1) . ": Kategori kosong.";
-                $skipped++;
-                continue;
+            $kategori = trim($row[2] ?? '') ?: null;
+
+            $severityRaw = strtolower(trim($row[3] ?? ''));
+            $severity = in_array($severityRaw, ['low', 'medium', 'high']) ? $severityRaw : null;
+            if ($severityRaw !== '' && $severity === null) {
+                $errors[] = "Baris " . ($i + 1) . ": Severity '$severityRaw' tidak valid (harus low/medium/high), diabaikan.";
             }
 
-            $severity = strtolower(trim($row[3] ?? ''));
-            if (!in_array($severity, ['low', 'medium', 'high'])) {
-                $severity = 'low';
-            }
+            $pic = trim($row[6] ?? '') ?: null;
 
-            $picName = trim($row[7] ?? '');
-            $pic = $picName !== '' ? Employee::whereRaw('LOWER(name) = ?', [strtolower($picName)])->first() : null;
-
-            $dateActionRaw = trim($row[8] ?? '');
+            $dateActionRaw = trim($row[7] ?? '');
             $dateAction = $dateActionRaw !== '' ? $this->parseFindingDate($dateActionRaw) : null;
 
             try {
                 CmFinding::create([
+                    'finding_code' => $this->generateFindingCode($tanggal),
                     'asset_id'    => $asset->id,
                     'tanggal'     => $tanggal,
-                    'reported_by' => null,
                     'kategori'    => $kategori,
                     'severity'    => $severity,
-                    'deskripsi'   => trim($row[4] ?? '') ?: null,
                     'status'      => 'open',
-                    'analysis'    => trim($row[5] ?? '') ?: null,
-                    'action'      => trim($row[6] ?? '') ?: null,
-                    'pic_id'      => $pic->id ?? null,
+                    'analysis'    => trim($row[4] ?? '') ?: null,
+                    'action'      => trim($row[5] ?? '') ?: null,
+                    'pic'         => $pic,
                     'date_action' => $dateAction,
-                    'remark'      => trim($row[9] ?? '') ?: null,
+                    'remark'      => trim($row[8] ?? '') ?: null,
                 ]);
                 $imported++;
             } catch (\Exception $e) {
