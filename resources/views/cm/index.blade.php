@@ -7,160 +7,281 @@
 @section('content')
 
 @if(session('success'))
-<div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
-    {{ session('success') }}
+<div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">{{ session('success') }}</div>
+@endif
+
+@if(session('import_errors') && count(session('import_errors')))
+<div class="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm">
+    <p class="font-semibold mb-1">Beberapa baris dilewati:</p>
+    <ul class="list-disc list-inside space-y-0.5 text-xs">
+        @foreach(session('import_errors') as $err)
+            <li>{{ $err }}</li>
+        @endforeach
+    </ul>
 </div>
 @endif
 
-{{-- Tab --}}
-<div class="flex gap-2 mb-5">
-    <button onclick="switchTab('measurements')" id="tab-measurements"
+{{-- ============================================================
+     TAB NAVIGASI + IMPORT BUTTON (paling atas, dekat judul halaman)
+     ============================================================ --}}
+<div class="flex items-center gap-2 mb-6">
+    <button onclick="switchTab('dashboard')" id="tab-dashboard"
         class="px-4 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium transition">
-        Pengukuran
+        Dashboard CM
     </button>
     <button onclick="switchTab('findings')" id="tab-findings"
         class="px-4 py-2 text-sm rounded-lg bg-white border border-gray-200 text-gray-600 font-medium transition">
         Temuan Visual
     </button>
-    <div class="ml-auto">
-        <button onclick="document.getElementById('modal-add').classList.remove('hidden')"
-            class="bg-[#0E9E8E] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#0a7a6d] transition">
-            + Tambah Data CM
-        </button>
+        <div class="ml-auto">
+        <button onclick="document.getElementById('modal-add').classList.remove('hidden')" class="bg-[#0E9E8E] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#0a7a6d] transition">+ Tambah Data CM</button>
     </div>
 </div>
 
-{{-- Tab Pengukuran --}}
-<div id="content-measurements">
-    <div class="bg-white rounded-xl border border-gray-200">
-        <table class="w-full text-sm">
-    <thead class="border-b border-gray-100">
-        <tr class="text-xs text-gray-500 uppercase">
-            <th class="px-5 py-3 text-left">Tanggal</th>
-            <th class="px-5 py-3 text-left">Equipment</th>
-            <th class="px-5 py-3 text-left">Driver Max Vib (mm/s)</th>
-            <th class="px-5 py-3 text-left">Driver Max Temp (°C)</th>
-            <th class="px-5 py-3 text-left">Driven Max Vib (mm/s)</th>
-            <th class="px-5 py-3 text-left">Driven Max Temp (°C)</th>
-            <th class="px-5 py-3 text-left">Ampere (A)</th>
-        </tr>
-    </thead>
-    <tbody class="divide-y divide-gray-50">
-        @forelse($cms as $m)
-        @php
-            $driverMaxVib = max(
-                $m->driver_de_vib_v ?? 0, $m->driver_de_vib_h ?? 0, $m->driver_de_vib_a ?? 0,
-                $m->driver_nde_vib_v ?? 0, $m->driver_nde_vib_h ?? 0, $m->driver_nde_vib_a ?? 0
-            );
-            $driverMaxTemp = max($m->driver_de_temp ?? 0, $m->driver_nde_temp ?? 0);
-            $drivenMaxVib = max(
-                $m->driven_de_vib_v ?? 0, $m->driven_de_vib_h ?? 0, $m->driven_de_vib_a ?? 0,
-                $m->driven_nde_vib_v ?? 0, $m->driven_nde_vib_h ?? 0, $m->driven_nde_vib_a ?? 0
-            );
-            $drivenMaxTemp = max($m->driven_de_temp ?? 0, $m->driven_nde_temp ?? 0);
-        @endphp
-        <tr class="hover:bg-gray-50">
-            <td class="px-5 py-3 text-gray-600">{{ $m->tanggal->format('d M Y') }}</td>
-            <td class="px-5 py-3">
-                <div class="font-medium text-gray-800">{{ $m->asset->name }}</div>
-                <div class="text-xs text-gray-400 font-mono">{{ $m->asset->tag_no }}</div>
-            </td>
-            <td class="px-5 py-3 {{ $driverMaxVib > 4.5 ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
-                {{ $driverMaxVib > 0 ? number_format($driverMaxVib, 2) : '—' }}
-            </td>
-            <td class="px-5 py-3 {{ $driverMaxTemp > 82 ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
-                {{ $driverMaxTemp > 0 ? number_format($driverMaxTemp, 1) : '—' }}
-            </td>
-            <td class="px-5 py-3 {{ $drivenMaxVib > 4.5 ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
-                {{ $drivenMaxVib > 0 ? number_format($drivenMaxVib, 2) : '—' }}
-            </td>
-            <td class="px-5 py-3 {{ $drivenMaxTemp > 82 ? 'text-red-600 font-semibold' : 'text-gray-600' }}">
-                {{ $drivenMaxTemp > 0 ? number_format($drivenMaxTemp, 1) : '—' }}
-            </td>
-            <td class="px-5 py-3 text-gray-600">{{ $m->driver_ampere ?? '—' }}</td>
-        </tr>
-        @empty
-        <tr>
-            <td colspan="7" class="px-5 py-10 text-center text-gray-400">Belum ada data pengukuran.</td>
-        </tr>
-        @endforelse
-    </tbody>
-</table>
+{{-- ============================================================
+     MODE: DASHBOARD CM — Ringkasan, Donut, Stacked Bar, Top Vib
+     ============================================================ --}}
+<div id="content-dashboard">
+<div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl p-4 border border-gray-200">
+        <div class="text-xs text-gray-400 mb-1">Total Records (12 bln)</div>
+        <div class="text-2xl font-bold text-gray-800">{{ $totalRecords }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-4 border border-green-200">
+        <div class="text-xs text-green-600 mb-1">Normal</div>
+        <div class="text-2xl font-bold text-green-500">{{ $goodCount }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-4 border border-amber-200">
+        <div class="text-xs text-amber-600 mb-1">Alarm</div>
+        <div class="text-2xl font-bold text-amber-500">{{ $alarmCount }}</div>
+    </div>
+    <div class="bg-white rounded-xl p-4 border border-red-200">
+        <div class="text-xs text-red-600 mb-1">Danger</div>
+        <div class="text-2xl font-bold text-red-500">{{ $dangerCount }}</div>
     </div>
 </div>
 
-{{-- Tab Temuan Visual --}}
+{{-- Baris 2: Donut per PT (kiri) + Stacked Bar Trend (kanan) --}}
+<div class="grid grid-cols-5 gap-4 mb-6">
+    {{-- Donut per PT --}}
+    <div class="col-span-2 bg-white rounded-xl border border-gray-200 p-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">Status per Perusahaan ({{ $latestMonthLabel }})</h3>
+        <div id="donut-charts" class="flex flex-wrap justify-center items-start gap-12 py-1">
+            @foreach($cmsPerCompany as $item)
+            <div class="text-center" style="width: 170px;">
+                <canvas id="donut-{{ $item['company']->id }}" height="170" width="170"
+                    class="block mx-auto"
+                    data-good="{{ $item['good'] }}"
+                    data-alarm="{{ $item['alarm'] }}"
+                    data-danger="{{ $item['danger'] }}"
+                    data-label="{{ $item['company']->code }}">
+                </canvas>
+                <p class="text-sm text-gray-600 font-medium mt-2">{{ $item['company']->code }}</p>
+                <p class="text-xs text-gray-400">{{ $item['total'] }} record</p>
+            </div>
+            @endforeach
+        </div>
+    </div>
+
+    {{-- Stacked Bar Trend --}}
+    <div class="col-span-3 bg-white rounded-xl border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-gray-700">Trend Status per Bulan</h3>
+            <div class="flex gap-2">
+                <select id="trend-range" onchange="updateTrend()"
+                    class="text-xs border border-gray-200 rounded px-2 py-1">
+                    <option value="12">12 bulan</option>
+                    <option value="6">6 bulan</option>
+                    <option value="3">3 bulan</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <input type="month" id="trend-start" class="text-xs border border-gray-200 rounded px-2 py-1 hidden"
+                    onchange="updateTrend()">
+                <input type="month" id="trend-end" class="text-xs border border-gray-200 rounded px-2 py-1 hidden"
+                    onchange="updateTrend()">
+            </div>
+        </div>
+        <div style="height: 240px;">
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+</div>
+
+{{-- Baris 3: Top 10 Vibrasi --}}
+<div class="bg-white rounded-xl border border-gray-200 mb-6">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="text-sm font-semibold text-gray-700">Top 10 Vibrasi Tertinggi ({{ $latestMonthLabel }})</h3>
+        <span class="text-xs text-gray-400">Max Vib (mm/s)</span>
+    </div>
+    <div class="px-6 py-4">
+        @if($topVib->isNotEmpty())
+        <div class="relative" style="height: {{ $topVib->count() * 40 + 40 }}px;">
+            <canvas id="topVibChart"></canvas>
+        </div>
+        @else
+        <p class="text-center text-gray-400 text-sm py-4">Belum ada data pengukuran bulan ini.</p>
+        @endif
+    </div>
+</div>
+</div>{{-- /#content-dashboard --}}
+
+{{-- ============================================================
+     MODE: TEMUAN VISUAL — daftar temuan berbasis card (klik → detail)
+     ============================================================ --}}
+{{-- Data finding untuk JS (modal detail & edit) --}}
+@php
+use Illuminate\Support\Facades\Storage;
+$findingsJson = $findings->map(function($f) {
+    return [
+        'id'                => $f->id,
+        'asset_tag'         => $f->asset->tag_no ?? '—',
+        'asset_desc'        => $f->asset->description ?? '—',
+        'company_code'      => $f->asset->company->code ?? '—',
+        'asset_id'          => $f->asset_id,
+        'tanggal'           => $f->tanggal->format('Y-m-d'),
+        'tanggal_label'     => $f->tanggal->format('d M Y'),
+        'kategori'          => $f->kategori,
+        'severity'          => $f->severity,
+        'status'            => $f->status,
+        'deskripsi'         => $f->deskripsi ?? '',
+        'analysis'          => $f->analysis ?? '',
+        'action'            => $f->action ?? '',
+        'pic_name'          => $f->pic->name ?? '—',
+        'pic_id'            => $f->pic_id,
+        'date_action'       => $f->date_action ? $f->date_action->format('Y-m-d') : '',
+        'date_action_label' => $f->date_action ? $f->date_action->format('d M Y') : '—',
+        'remark'            => $f->remark ?? '',
+        'reporter'          => $f->reporter->name ?? '—',
+        'reported_by'       => $f->reported_by,
+        'foto_1'            => $f->foto_path   ? Storage::url($f->foto_path)   : null,
+        'foto_2'            => $f->foto_path_2 ? Storage::url($f->foto_path_2) : null,
+        'foto_3'            => $f->foto_path_3 ? Storage::url($f->foto_path_3) : null,
+        'update_url'        => route('cm.findings.update', $f),
+        'destroy_url'       => route('cm.findings.destroy', $f),
+    ];
+})->values();
+@endphp
+<script>
+var findingsData = @json($findingsJson);
+</script>
+
 <div id="content-findings" class="hidden">
-    <div class="bg-white rounded-xl border border-gray-200">
-        <table class="w-full text-sm">
-            <thead class="border-b border-gray-100">
-                <tr class="text-xs text-gray-500 uppercase">
-                    <th class="px-5 py-3 text-left">Tanggal</th>
-                    <th class="px-5 py-3 text-left">Equipment</th>
-                    <th class="px-5 py-3 text-left">Kategori</th>
-                    <th class="px-5 py-3 text-left">Deskripsi</th>
-                    <th class="px-5 py-3 text-left">Severity</th>
-                    <th class="px-5 py-3 text-left">Status</th>
-                    <th class="px-5 py-3 text-left">Dilaporkan</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                @forelse($findings as $f)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-5 py-3 text-gray-600">{{ $f->tanggal->format('d M Y') }}</td>
-                    <td class="px-5 py-3">
-                        <div class="font-medium text-gray-800">{{ $f->asset->name }}</div>
-                        <div class="text-xs text-gray-400 font-mono">{{ $f->asset->tag_no }}</div>
-                    </td>
-                    <td class="px-5 py-3 capitalize text-gray-600">{{ str_replace('_', ' ', $f->kategori) }}</td>
-                    <td class="px-5 py-3 text-gray-600 max-w-xs truncate">{{ $f->deskripsi }}</td>
-                    <td class="px-5 py-3">
-                        @php $sc = ['low'=>'bg-green-100 text-green-700','medium'=>'bg-amber-100 text-amber-700','high'=>'bg-red-100 text-red-700']; @endphp
-                        <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $sc[$f->severity] }}">
-                            {{ ucfirst($f->severity) }}
-                        </span>
-                    </td>
-                    <td class="px-5 py-3">
-                        @php $st = ['open'=>'bg-red-100 text-red-700','acknowledged'=>'bg-amber-100 text-amber-700','resolved'=>'bg-green-100 text-green-700']; @endphp
-                        <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $st[$f->status] }}">
-                            {{ ucfirst($f->status) }}
-                        </span>
-                    </td>
-                    <td class="px-5 py-3 text-gray-600">{{ $f->reporter->name ?? '—' }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="7" class="px-5 py-10 text-center text-gray-400">Belum ada temuan visual.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        @forelse($findings as $f)
+        @php
+            $scColors = ['low'=>'bg-green-100 text-green-700','medium'=>'bg-amber-100 text-amber-700','high'=>'bg-red-100 text-red-700'];
+            $stColors = ['open'=>'bg-red-100 text-red-700','acknowledged'=>'bg-amber-100 text-amber-700','resolved'=>'bg-green-100 text-green-700'];
+        @endphp
+        <div onclick="openDetail({{ $f->id }})"
+             class="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:shadow-md hover:border-gray-300 transition">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex-1 min-w-0 pr-2">
+                    <p class="font-medium text-gray-800 truncate">{{ $f->asset->tag_no ?? '—' }}</p>
+                    <p class="text-xs text-gray-400 truncate">{{ $f->asset->description ?? '—' }} &middot; {{ $f->asset->company->code ?? '—' }}</p>
+                </div>
+                <div class="flex gap-1.5 flex-shrink-0">
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $scColors[$f->severity] ?? 'bg-gray-100' }}">{{ ucfirst($f->severity) }}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $stColors[$f->status] ?? 'bg-gray-100' }}">{{ ucfirst($f->status) }}</span>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mb-1 capitalize">{{ str_replace('_', ' ', $f->kategori) }} &middot; {{ $f->tanggal->format('d M Y') }}</p>
+            <p class="text-sm text-gray-600 line-clamp-2">{{ $f->deskripsi ?? '—' }}</p>
+            <p class="text-xs text-gray-400 mt-2">Dilaporkan: {{ $f->reporter->name ?? '—' }}</p>
+        </div>
+        @empty
+        <div class="xl:col-span-3 md:col-span-2 bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-400 text-sm">
+            Belum ada temuan visual.
+        </div>
+        @endforelse
     </div>
 </div>
 
-{{-- Modal Tambah --}}
-<div id="modal-add" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-    <div class="bg-white rounded-xl w-full max-w-lg p-6 max-h-screen overflow-y-auto">
-        <div class="flex items-center justify-between mb-5">
-            <h3 class="font-semibold text-gray-800">Tambah Data CM</h3>
-            <button onclick="document.getElementById('modal-add').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
+{{-- ============================================================
+     MODAL DETAIL TEMUAN VISUAL (read-only, ada tombol Edit & Hapus)
+     ============================================================ --}}
+<div id="modal-detail" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div>
+                <h3 id="detail-asset-tag" class="font-semibold text-gray-800"></h3>
+                <p id="detail-asset-desc" class="text-xs text-gray-400"></p>
+            </div>
+            <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
         </div>
-
-        {{-- Type Toggle --}}
-        <div class="flex gap-2 mb-4">
-            <button type="button" onclick="switchType('measurement')" id="type-measurement"
-                class="flex-1 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium">
-                Pengukuran
-            </button>
-            <button type="button" onclick="switchType('finding')" id="type-finding"
-                class="flex-1 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 font-medium">
-                Temuan Visual
-            </button>
+        <div class="px-6 py-5 space-y-5">
+            {{-- Badge status --}}
+            <div class="flex gap-2 flex-wrap">
+                <span id="detail-badge-severity" class="px-3 py-1 rounded-full text-xs font-medium"></span>
+                <span id="detail-badge-status" class="px-3 py-1 rounded-full text-xs font-medium"></span>
+                <span id="detail-kategori" class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 capitalize"></span>
+                <span id="detail-tanggal" class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"></span>
+            </div>
+            {{-- Deskripsi --}}
+            <div>
+                <p class="text-xs text-gray-400 mb-1">Deskripsi Temuan</p>
+                <p id="detail-deskripsi" class="text-sm text-gray-700"></p>
+            </div>
+            {{-- Analysis & Action --}}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-xs text-gray-400 mb-1">Analysis</p>
+                    <p id="detail-analysis" class="text-sm text-gray-700">—</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 mb-1">Action</p>
+                    <p id="detail-action" class="text-sm text-gray-700">—</p>
+                </div>
+            </div>
+            {{-- PIC & Date Action & Remark --}}
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <p class="text-xs text-gray-400 mb-1">PIC</p>
+                    <p id="detail-pic" class="text-sm text-gray-700">—</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 mb-1">Date Action</p>
+                    <p id="detail-date-action" class="text-sm text-gray-700">—</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 mb-1">Dilaporkan</p>
+                    <p id="detail-reporter" class="text-sm text-gray-700">—</p>
+                </div>
+            </div>
+            {{-- Remark --}}
+            <div id="detail-remark-wrap" class="hidden">
+                <p class="text-xs text-gray-400 mb-1">Remark</p>
+                <p id="detail-remark" class="text-sm text-gray-700"></p>
+            </div>
+            {{-- Foto --}}
+            <div id="detail-foto-wrap" class="hidden">
+                <p class="text-xs text-gray-400 mb-2">Foto Temuan</p>
+                <div id="detail-foto-grid" class="flex gap-3 flex-wrap"></div>
+            </div>
         </div>
+        <div class="flex gap-3 px-6 py-4 border-t border-gray-100">
+            <button onclick="openEdit(currentFindingId)" class="flex-1 bg-[#0E9E8E] text-white py-2 rounded-lg text-sm hover:bg-[#0a7a6d] transition">Edit</button>
+            <button onclick="confirmDelete(currentFindingId)" class="px-4 border border-red-200 text-red-500 py-2 rounded-lg text-sm hover:bg-red-50 transition">Hapus</button>
+            <button onclick="closeDetail()" class="flex-1 border border-gray-200 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50 transition">Tutup</button>
+        </div>
+    </div>
+</div>
 
-        <form action="{{ route('cm.store') }}" method="POST" class="space-y-4">
-            @csrf
-            <input type="hidden" name="type" id="input-type" value="measurement">
+{{-- Hidden form untuk hapus (method DELETE) --}}
+<form id="form-delete-finding" method="POST" class="hidden">
+    @csrf @method('DELETE')
+</form>
+
+{{-- ============================================================
+     MODAL EDIT TEMUAN VISUAL
+     ============================================================ --}}
+<div id="modal-edit" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800">Edit Temuan Visual</h3>
+            <button onclick="closeEdit()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <form id="form-edit-finding" method="POST" enctype="multipart/form-data" class="px-6 py-5 space-y-4">
+            @csrf @method('PUT')
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -168,148 +289,239 @@
                     <select name="asset_id" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                         <option value="">Pilih Equipment</option>
                         @foreach($assets as $asset)
-                        <option value="{{ $asset->id }}">{{ $asset->tag_no }} — {{ $asset->name }}</option>
+                        <option value="{{ $asset->id }}">{{ $asset->tag_no }} — {{ $asset->description }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
                     <label class="text-xs text-gray-500 mb-1 block">Tanggal *</label>
-                    <input type="date" name="tanggal" required value="{{ date('Y-m-d') }}"
-                        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                    <input type="date" name="tanggal" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                 </div>
             </div>
 
-            {{-- Measurement Fields --}}
-<div id="fields-measurement" class="space-y-4">
-    <div>
-        <label class="text-xs text-gray-500 mb-1 block">Diukur Oleh *</label>
-        <select name="measured_by" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-            <option value="">Pilih Teknisi</option>
-            @foreach($employees as $emp)
-            <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-            @endforeach
-        </select>
-    </div>
-
-    {{-- Driver (Motor) --}}
-    <div class="border border-gray-100 rounded-lg p-3">
-        <p class="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Driver (Motor)</p>
-        <div class="grid grid-cols-3 gap-2 mb-2">
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE Vib V (mm/s)</label>
-                <input type="number" step="0.01" name="driver_de_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE Vib H (mm/s)</label>
-                <input type="number" step="0.01" name="driver_de_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE Vib A (mm/s)</label>
-                <input type="number" step="0.01" name="driver_de_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE CF+</label>
-                <input type="number" step="0.01" name="driver_de_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE Temp (°C)</label>
-                <input type="number" step="0.01" name="driver_de_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-        </div>
-        <div class="grid grid-cols-3 gap-2 mb-2">
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE Vib V (mm/s)</label>
-                <input type="number" step="0.01" name="driver_nde_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE Vib H (mm/s)</label>
-                <input type="number" step="0.01" name="driver_nde_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE Vib A (mm/s)</label>
-                <input type="number" step="0.01" name="driver_nde_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE CF+</label>
-                <input type="number" step="0.01" name="driver_nde_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE Temp (°C)</label>
-                <input type="number" step="0.01" name="driver_nde_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">Ampere (A)</label>
-                <input type="number" step="0.01" name="driver_ampere" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-        </div>
-    </div>
-
-    {{-- Driven --}}
-    <div class="border border-gray-100 rounded-lg p-3">
-        <p class="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Driven (Gearbox/Pump/dll)</p>
-        <div class="grid grid-cols-3 gap-2 mb-2">
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE Vib V (mm/s)</label>
-                <input type="number" step="0.01" name="driven_de_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE Vib H (mm/s)</label>
-                <input type="number" step="0.01" name="driven_de_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE Vib A (mm/s)</label>
-                <input type="number" step="0.01" name="driven_de_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE CF+</label>
-                <input type="number" step="0.01" name="driven_de_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">DE Temp (°C)</label>
-                <input type="number" step="0.01" name="driven_de_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-        </div>
-        <div class="grid grid-cols-3 gap-2">
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE Vib V (mm/s)</label>
-                <input type="number" step="0.01" name="driven_nde_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE Vib H (mm/s)</label>
-                <input type="number" step="0.01" name="driven_nde_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE Vib A (mm/s)</label>
-                <input type="number" step="0.01" name="driven_nde_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE CF+</label>
-                <input type="number" step="0.01" name="driven_nde_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-            <div>
-                <label class="text-xs text-gray-400 mb-1 block">NDE Temp (°C)</label>
-                <input type="number" step="0.01" name="driven_nde_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs">
-            </div>
-        </div>
-    </div>
-
-    <div>
-        <label class="text-xs text-gray-500 mb-1 block">Catatan</label>
-        <textarea name="catatan" rows="2"
-            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
-    </div>
-</div>
-
-            {{-- Finding Fields --}}
-            <div id="fields-finding" class="space-y-4 hidden">
+            <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Dilaporkan Oleh *</label>
+                    <label class="text-xs text-gray-500 mb-1 block">Dilaporkan Oleh</label>
                     <select name="reported_by" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                         <option value="">Pilih Teknisi</option>
                         @foreach($employees as $emp)
                         <option value="{{ $emp->id }}">{{ $emp->name }}</option>
                         @endforeach
                     </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Status</label>
+                    <select name="status" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="open">Open</option>
+                        <option value="acknowledged">Acknowledged</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Kategori</label>
+                    <select name="kategori" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="korosi">Korosi</option>
+                        <option value="kebocoran">Kebocoran</option>
+                        <option value="baut_loose">Baut Loose</option>
+                        <option value="guard_lepas">Guard Lepas</option>
+                        <option value="abnormal_suara">Abnormal Suara</option>
+                        <option value="lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Severity</label>
+                    <select name="severity" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 mb-1 block">Deskripsi</label>
+                <textarea name="deskripsi" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Analysis</label>
+                    <textarea name="analysis" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Action</label>
+                    <textarea name="action" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">PIC Tindak Lanjut</label>
+                    <select name="pic_id" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Pilih PIC</option>
+                        @foreach($employees as $emp)
+                        <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Date Action</label>
+                    <input type="date" name="date_action" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 mb-1 block">Remark</label>
+                <textarea name="remark" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+            </div>
+
+            {{-- Upload foto (opsional, hanya timpa jika diisi) --}}
+            <div class="border border-gray-100 rounded-lg p-3 space-y-2">
+                <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Foto (opsional — kosongkan jika tidak diganti)</p>
+                <div id="edit-foto-preview" class="flex gap-3 flex-wrap mb-2"></div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">Foto 1</label>
+                        <input type="file" name="foto_1" accept="image/*" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">Foto 2</label>
+                        <input type="file" name="foto_2" accept="image/*" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">Foto 3</label>
+                        <input type="file" name="foto_3" accept="image/*" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="flex-1 bg-[#0E9E8E] text-white py-2 rounded-lg text-sm hover:bg-[#0a7a6d] transition">Simpan Perubahan</button>
+                <button type="button" onclick="closeEdit()" class="flex-1 border border-gray-200 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50 transition">Batal</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ============================================================
+     MODAL TAMBAH DATA CM
+     ============================================================ --}}
+<div id="modal-add" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl w-full max-w-lg p-6 max-h-screen overflow-y-auto">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="font-semibold text-gray-800">Tambah Data CM</h3>
+            <button onclick="document.getElementById('modal-add').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">&times;</button>
+        </div>
+                <div class="flex gap-2 mb-4">
+            <button type="button" onclick="switchType('measurement')" id="type-measurement" class="flex-1 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium">Pengukuran</button>
+            <button type="button" onclick="switchType('finding')" id="type-finding" class="flex-1 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 font-medium">Temuan Visual</button>
+        </div>
+                <div id="import-measurement" class="flex gap-2 mb-4">
+            <a href="{{ route('cm.template') }}"
+               class="flex-1 text-center border border-gray-200 text-gray-600 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition">
+                Download Template
+            </a>
+            <a href="{{ route('cm.import.form') }}"
+               class="flex-1 text-center border border-gray-200 text-gray-600 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition">
+                Import Excel
+            </a>
+        </div>
+                <div id="import-finding" class="hidden flex gap-2 mb-4">
+            <a href="{{ route('cm.findings.template') }}"
+               class="flex-1 text-center border border-gray-200 text-gray-600 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition">
+                Download Template
+            </a>
+            <a href="{{ route('cm.findings.import.form') }}"
+               class="flex-1 text-center border border-gray-200 text-gray-600 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition">
+                Import Excel
+            </a>
+        </div>
+        <form action="{{ route('cm.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            @csrf
+            <input type="hidden" name="type" id="input-type" value="measurement">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Equipment *</label>
+                    <select name="asset_id" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Pilih Equipment</option>
+                        @foreach($assets as $asset)
+                        <option value="{{ $asset->id }}">{{ $asset->tag_no }} &mdash; {{ $asset->description }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Tanggal *</label>
+                    <input type="date" name="tanggal" required value="{{ date('Y-m-d') }}" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div id="fields-measurement" class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Diukur Oleh</label>
+                    <select name="measured_by" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Pilih Teknisi</option>
+                        @foreach($employees as $emp)
+                        <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="border border-gray-100 rounded-lg p-3">
+                    <p class="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Driver (Motor)</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div><label class="text-xs text-gray-400">DE Vib V</label><input type="number" step="0.01" name="driver_de_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">DE Vib H</label><input type="number" step="0.01" name="driver_de_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">DE Vib A</label><input type="number" step="0.01" name="driver_de_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">DE CF+</label><input type="number" step="0.01" name="driver_de_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">DE Temp (&deg;C)</label><input type="number" step="0.01" name="driver_de_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE Vib V</label><input type="number" step="0.01" name="driver_nde_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE Vib H</label><input type="number" step="0.01" name="driver_nde_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE Vib A</label><input type="number" step="0.01" name="driver_nde_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE CF+</label><input type="number" step="0.01" name="driver_nde_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE Temp (&deg;C)</label><input type="number" step="0.01" name="driver_nde_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">Ampere (A)</label><input type="number" step="0.01" name="driver_ampere" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                    </div>
+                </div>
+                <div class="border border-gray-100 rounded-lg p-3">
+                    <p class="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Driven (Gearbox/Pump/dll)</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div><label class="text-xs text-gray-400">DE Vib V</label><input type="number" step="0.01" name="driven_de_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">DE Vib H</label><input type="number" step="0.01" name="driven_de_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">DE Vib A</label><input type="number" step="0.01" name="driven_de_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">DE CF+</label><input type="number" step="0.01" name="driven_de_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">DE Temp (&deg;C)</label><input type="number" step="0.01" name="driven_de_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE Vib V</label><input type="number" step="0.01" name="driven_nde_vib_v" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE Vib H</label><input type="number" step="0.01" name="driven_nde_vib_h" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE Vib A</label><input type="number" step="0.01" name="driven_nde_vib_a" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE CF+</label><input type="number" step="0.01" name="driven_nde_cf" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                        <div><label class="text-xs text-gray-400">NDE Temp (&deg;C)</label><input type="number" step="0.01" name="driven_nde_temp" class="w-full border border-gray-200 rounded px-2 py-1.5 text-xs"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Catatan</label>
+                    <textarea name="catatan" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                </div>
+            </div>
+            <div id="fields-finding" class="space-y-4 hidden">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">Dilaporkan Oleh</label>
+                        <select name="reported_by" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Pilih Teknisi</option>
+                            @foreach($employees as $emp)
+                            <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">Status</label>
+                        <select name="status" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                            <option value="open">Open</option>
+                            <option value="acknowledged">Acknowledged</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -334,47 +546,322 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-500 mb-1 block">Deskripsi</label>
-                    <textarea name="deskripsi" rows="2"
-                        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                    <textarea name="deskripsi" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">Analysis</label>
+                        <textarea name="analysis" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">Action</label>
+                        <textarea name="action" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">PIC Tindak Lanjut</label>
+                        <select name="pic_id" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Pilih PIC</option>
+                            @foreach($employees as $emp)
+                            <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">Date Action</label>
+                        <input type="date" name="date_action" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Remark</label>
+                    <textarea name="remark" rows="2" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="border border-gray-100 rounded-lg p-3">
+                    <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Foto (maks. 3, opsional)</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Foto 1</label>
+                            <input type="file" name="foto_1" accept="image/*" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Foto 2</label>
+                            <input type="file" name="foto_2" accept="image/*" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Foto 3</label>
+                            <input type="file" name="foto_3" accept="image/*" class="w-full text-xs border border-gray-200 rounded px-2 py-1.5">
+                        </div>
+                    </div>
                 </div>
             </div>
-
             <div class="flex gap-3 pt-2">
-                <button type="submit" class="flex-1 bg-[#0E9E8E] text-white py-2 rounded-lg text-sm hover:bg-[#0a7a6d] transition">
-                    Simpan
-                </button>
-                <button type="button" onclick="document.getElementById('modal-add').classList.add('hidden')"
-                    class="flex-1 border border-gray-200 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
-                    Batal
-                </button>
+                <button type="submit" class="flex-1 bg-[#0E9E8E] text-white py-2 rounded-lg text-sm hover:bg-[#0a7a6d] transition">Simpan</button>
+                <button type="button" onclick="document.getElementById('modal-add').classList.add('hidden')" class="flex-1 border border-gray-200 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50 transition">Batal</button>
             </div>
         </form>
     </div>
 </div>
 
+{{-- ============================================================
+     CHART.JS + SCRIPT
+     ============================================================ --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
+var barLabels = @json($barLabels);
+var barGood   = @json($barGood);
+var barAlarm  = @json($barAlarm);
+var barDanger = @json($barDanger);
+var topVibData = @json($topVib);
+var topMaxVib  = {{ $topMaxVib }};
+var trendChart = null;
+
+function initTrendChart() {
+    var ctx = document.getElementById('trendChart').getContext('2d');
+    trendChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: barLabels,
+            datasets: [
+                { label: 'Normal', data: barGood, backgroundColor: '#22C55E', borderRadius: 2 },
+                { label: 'Alarm',  data: barAlarm, backgroundColor: '#F59E0B', borderRadius: 2 },
+                { label: 'Danger', data: barDanger, backgroundColor: '#EF4444', borderRadius: 2 },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } } },
+            scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Jumlah Records' } } }
+        }
+    });
+}
+
+function initTopVibChart() {
+    var canvasEl = document.getElementById('topVibChart');
+    if (!canvasEl) { return; } // canvas tidak dirender Blade kalau topVib kosong
+    var ctx = canvasEl.getContext('2d');
+    var labels = topVibData.map(function(d) { return d.asset_tag + ' (' + d.company_code + ')'; });
+    var values = topVibData.map(function(d) { return d.max_vib; });
+    var colors = topVibData.map(function(d) { return d.status === 'danger' ? '#EF4444' : d.status === 'alarm' ? '#F59E0B' : '#22C55E'; });
+    new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderRadius: 4 }] },
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.x + ' mm/s - ' + topVibData[ctx.dataIndex].asset_desc; } } } },
+            scales: { x: { beginAtZero: true, max: (topMaxVib * 1.15) || 10, title: { display: true, text: 'mm/s' } }, y: { grid: { display: false } } }
+        }
+    });
+}
+
+function initDonutCharts() {
+    document.querySelectorAll('canvas[id^="donut-"]').forEach(function(canvas) {
+        var g = parseInt(canvas.dataset.good) || 0;
+        var a = parseInt(canvas.dataset.alarm) || 0;
+        var d = parseInt(canvas.dataset.danger) || 0;
+        new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: { labels: ['Normal', 'Alarm', 'Danger'], datasets: [{ data: [g, a, d], backgroundColor: ['#22C55E', '#F59E0B', '#EF4444'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: true, cutout: '70%', plugins: { legend: { display: false }, tooltip: { enabled: (g + a + d) > 0 } } }
+        });
+    });
+}
+
 function switchTab(tab) {
-    document.getElementById('content-measurements').classList.toggle('hidden', tab !== 'measurements');
+    document.getElementById('content-dashboard').classList.toggle('hidden', tab !== 'dashboard');
     document.getElementById('content-findings').classList.toggle('hidden', tab !== 'findings');
-    document.getElementById('tab-measurements').className = tab === 'measurements'
-        ? 'px-4 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium transition'
-        : 'px-4 py-2 text-sm rounded-lg bg-white border border-gray-200 text-gray-600 font-medium transition';
-    document.getElementById('tab-findings').className = tab === 'findings'
-        ? 'px-4 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium transition'
-        : 'px-4 py-2 text-sm rounded-lg bg-white border border-gray-200 text-gray-600 font-medium transition';
+    document.getElementById('tab-dashboard').className = tab === 'dashboard' ? 'px-4 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium transition' : 'px-4 py-2 text-sm rounded-lg bg-white border border-gray-200 text-gray-600 font-medium transition';
+    document.getElementById('tab-findings').className = tab === 'findings' ? 'px-4 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium transition' : 'px-4 py-2 text-sm rounded-lg bg-white border border-gray-200 text-gray-600 font-medium transition';
 }
 
 function switchType(type) {
     document.getElementById('input-type').value = type;
     document.getElementById('fields-measurement').classList.toggle('hidden', type !== 'measurement');
     document.getElementById('fields-finding').classList.toggle('hidden', type !== 'finding');
-    document.getElementById('type-measurement').className = type === 'measurement'
-        ? 'flex-1 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium'
-        : 'flex-1 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 font-medium';
-    document.getElementById('type-finding').className = type === 'finding'
-        ? 'flex-1 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium'
-        : 'flex-1 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 font-medium';
+    document.getElementById('import-measurement').classList.toggle('hidden', type !== 'measurement');
+    document.getElementById('import-finding').classList.toggle('hidden', type !== 'finding');
+    document.getElementById('type-measurement').className = type === 'measurement' ? 'flex-1 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium' : 'flex-1 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 font-medium';
+    document.getElementById('type-finding').className = type === 'finding' ? 'flex-1 py-2 text-sm rounded-lg bg-[#0E9E8E] text-white font-medium' : 'flex-1 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 font-medium';
 }
+
+async function updateTrend() {
+    if (!trendChart) {
+        console.error('updateTrend dibatalkan: trendChart belum siap (kemungkinan initTrendChart gagal sebelumnya, cek log "Trend chart gagal render").');
+        return;
+    }
+    var range = document.getElementById('trend-range').value;
+    var startInput = document.getElementById('trend-start');
+    var endInput = document.getElementById('trend-end');
+    if (range === 'custom') {
+        startInput.classList.remove('hidden'); endInput.classList.remove('hidden');
+        if (!startInput.value || !endInput.value) return;
+    } else { startInput.classList.add('hidden'); endInput.classList.add('hidden'); }
+    var params = new URLSearchParams({ range: range });
+    if (range === 'custom') { params.set('start', startInput.value); params.set('end', endInput.value); }
+    var url = '{{ route("cm.trend-data") }}?' + params.toString();
+    console.log('updateTrend: fetching', url);
+    try {
+        var res = await fetch(url);
+        if (!res.ok) {
+            console.error('updateTrend: response status', res.status, res.statusText);
+            alert('Gagal mengambil data trend (status ' + res.status + ')');
+            return;
+        }
+        var data = await res.json();
+        console.log('updateTrend: response data', data);
+        if (data.error) { alert(data.error); return; }
+        if (!data.labels || !data.good || !data.alarm || !data.danger) {
+            console.error('updateTrend: format response tidak sesuai ekspektasi (butuh labels, good, alarm, danger)', data);
+            return;
+        }
+        trendChart.data.labels = data.labels;
+        trendChart.data.datasets[0].data = data.good;
+        trendChart.data.datasets[1].data = data.alarm;
+        trendChart.data.datasets[2].data = data.danger;
+        trendChart.update();
+    } catch(e) { console.error('Gagal update trend:', e); }
+}
+
+
+// ── Finding Detail & Edit Modal ──────────────────────────────
+var currentFindingId = null;
+
+var scBadge = {
+    low:    'bg-green-100 text-green-700',
+    medium: 'bg-amber-100 text-amber-700',
+    high:   'bg-red-100 text-red-700'
+};
+var stBadge = {
+    open:         'bg-red-100 text-red-700',
+    acknowledged: 'bg-amber-100 text-amber-700',
+    resolved:     'bg-green-100 text-green-700'
+};
+
+function findingById(id) {
+    return findingsData.find(function(f) { return f.id == id; });
+}
+
+function openDetail(id) {
+    var f = findingById(id);
+    if (!f) return;
+    currentFindingId = id;
+
+    document.getElementById('detail-asset-tag').textContent  = f.asset_tag;
+    document.getElementById('detail-asset-desc').textContent = f.asset_desc + ' · ' + f.company_code;
+    document.getElementById('detail-deskripsi').textContent  = f.deskripsi || '—';
+    document.getElementById('detail-analysis').textContent   = f.analysis  || '—';
+    document.getElementById('detail-action').textContent     = f.action    || '—';
+    document.getElementById('detail-pic').textContent        = f.pic_name;
+    document.getElementById('detail-date-action').textContent = f.date_action_label;
+    document.getElementById('detail-reporter').textContent   = f.reporter;
+
+    var sev = document.getElementById('detail-badge-severity');
+    sev.textContent  = f.severity.charAt(0).toUpperCase() + f.severity.slice(1);
+    sev.className    = 'px-3 py-1 rounded-full text-xs font-medium ' + (scBadge[f.severity] || 'bg-gray-100 text-gray-600');
+
+    var sta = document.getElementById('detail-badge-status');
+    sta.textContent  = f.status.charAt(0).toUpperCase() + f.status.slice(1);
+    sta.className    = 'px-3 py-1 rounded-full text-xs font-medium ' + (stBadge[f.status] || 'bg-gray-100 text-gray-600');
+
+    document.getElementById('detail-kategori').textContent = f.kategori.replace(/_/g, ' ');
+    document.getElementById('detail-tanggal').textContent  = f.tanggal_label;
+
+    // Remark
+    var remarkWrap = document.getElementById('detail-remark-wrap');
+    if (f.remark) {
+        document.getElementById('detail-remark').textContent = f.remark;
+        remarkWrap.classList.remove('hidden');
+    } else {
+        remarkWrap.classList.add('hidden');
+    }
+
+    // Foto
+    var fotoWrap = document.getElementById('detail-foto-wrap');
+    var fotoGrid = document.getElementById('detail-foto-grid');
+    fotoGrid.innerHTML = '';
+    var fotos = [f.foto_1, f.foto_2, f.foto_3].filter(Boolean);
+    if (fotos.length > 0) {
+        fotos.forEach(function(src) {
+            var img = document.createElement('img');
+            img.src = src;
+            img.className = 'h-28 w-28 object-cover rounded-lg border border-gray-200 cursor-pointer';
+            img.onclick = function() { window.open(src, '_blank'); };
+            fotoGrid.appendChild(img);
+        });
+        fotoWrap.classList.remove('hidden');
+    } else {
+        fotoWrap.classList.add('hidden');
+    }
+
+    document.getElementById('modal-detail').classList.remove('hidden');
+}
+
+function closeDetail() {
+    document.getElementById('modal-detail').classList.add('hidden');
+    currentFindingId = null;
+}
+
+function openEdit(id) {
+    var f = findingById(id);
+    if (!f) return;
+    closeDetail();
+
+    var form = document.getElementById('form-edit-finding');
+    form.action = f.update_url;
+
+    // Isi field
+    form.querySelector('[name="asset_id"]').value     = f.asset_id;
+    form.querySelector('[name="tanggal"]').value      = f.tanggal;
+    form.querySelector('[name="reported_by"]').value  = f.reported_by || '';
+    form.querySelector('[name="status"]').value       = f.status;
+    form.querySelector('[name="kategori"]').value     = f.kategori;
+    form.querySelector('[name="severity"]').value     = f.severity;
+    form.querySelector('[name="deskripsi"]').value    = f.deskripsi;
+    form.querySelector('[name="analysis"]').value     = f.analysis;
+    form.querySelector('[name="action"]').value       = f.action;
+    form.querySelector('[name="pic_id"]').value       = f.pic_id || '';
+    form.querySelector('[name="date_action"]').value  = f.date_action || '';
+    form.querySelector('[name="remark"]').value       = f.remark;
+
+    // Preview foto existing
+    var preview = document.getElementById('edit-foto-preview');
+    preview.innerHTML = '';
+    var fotos = [f.foto_1, f.foto_2, f.foto_3].filter(Boolean);
+    fotos.forEach(function(src, i) {
+        var wrap = document.createElement('div');
+        wrap.className = 'relative';
+        var img = document.createElement('img');
+        img.src = src;
+        img.className = 'h-20 w-20 object-cover rounded-lg border border-gray-200';
+        var lbl = document.createElement('p');
+        lbl.textContent = 'Foto ' + (i + 1);
+        lbl.className = 'text-xs text-gray-400 text-center mt-1';
+        wrap.appendChild(img);
+        wrap.appendChild(lbl);
+        preview.appendChild(wrap);
+    });
+
+    document.getElementById('modal-edit').classList.remove('hidden');
+}
+
+function closeEdit() {
+    document.getElementById('modal-edit').classList.add('hidden');
+}
+
+function confirmDelete(id) {
+    var f = findingById(id);
+    if (!f) return;
+    if (!confirm('Hapus temuan ' + f.asset_tag + ' (' + f.tanggal_label + ')? Tindakan ini tidak bisa dibatalkan.')) return;
+    var form = document.getElementById('form-delete-finding');
+    form.action = f.destroy_url;
+    form.submit();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    try { initDonutCharts(); } catch (e) { console.error('Donut chart gagal render:', e); }
+    try { initTrendChart(); } catch (e) { console.error('Trend chart gagal render:', e); }
+    try { initTopVibChart(); } catch (e) { console.error('Top Vib chart gagal render:', e); }
+});
 </script>
 
 @endsection

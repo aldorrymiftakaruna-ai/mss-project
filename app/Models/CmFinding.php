@@ -8,11 +8,14 @@ class CmFinding extends Model
 {
     protected $fillable = [
         'asset_id', 'reported_by', 'tanggal',
-        'kategori', 'deskripsi', 'severity', 'status', 'foto_path'
+        'kategori', 'deskripsi', 'severity', 'status', 'remark',
+        'foto_path', 'foto_path_2', 'foto_path_3',
+        'analysis', 'action', 'pic_id', 'date_action',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
+        'date_action' => 'date',
     ];
 
     public function asset()
@@ -23,5 +26,10 @@ class CmFinding extends Model
     public function reporter()
     {
         return $this->belongsTo(Employee::class, 'reported_by');
+    }
+
+    public function pic()
+    {
+        return $this->belongsTo(Employee::class, 'pic_id');
     }
 }

@@ -43,36 +43,36 @@
             @if($assets->isEmpty())
                 <p class="text-gray-400 text-sm text-center py-8">Belum ada data equipment.</p>
             @else
-                <table class="w-full text-sm">
+        <table class="w-full text-sm">
                     <thead>
                         <tr class="text-xs text-gray-500 uppercase border-b border-gray-100">
                             <th class="pb-2 text-left">Tag No</th>
                             <th class="pb-2 text-left">Nama</th>
                             <th class="pb-2 text-left">PT</th>
                             <th class="pb-2 text-left">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-50">
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
                         @foreach($assets as $asset)
                         <tr>
                             <td class="py-2 font-mono text-xs text-gray-600">{{ $asset->tag_no }}</td>
-                            <td class="py-2 text-gray-800">{{ $asset->name }}</td>
+                            <td class="py-2 text-gray-800">{{ $asset->description }}</td>
                             <td class="py-2 text-gray-500">{{ $asset->company->code }}</td>
                             <td class="py-2">
                                 @php
-                                    $colors = ['normal'=>'bg-green-100 text-green-700','warning'=>'bg-amber-100 text-amber-700','critical'=>'bg-orange-100 text-orange-700','breakdown'=>'bg-red-100 text-red-700'];
-                                @endphp
-                                <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$asset->status] }}">
+                                    $colors = ['normal'=>'bg-green-100 text-green-700', 'alarm'=>'bg-amber-100 text-amber-700', 'danger'=>'bg-red-100 text-red-700'];
+                @endphp
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$asset->status] ?? 'bg-gray-100 text-gray-600' }}">
                                     {{ ucfirst($asset->status) }}
-                                </span>
-                            </td>
+                        </span>
+                    </td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             @endif
-        </div>
     </div>
+</div>
 
     {{-- DSS Rekomendasi --}}
     <div class="bg-white rounded-xl border border-gray-200">
@@ -90,8 +90,7 @@
             <p class="text-gray-400 text-sm text-center py-8">Tidak ada rekomendasi saat ini.</p>
             @endforelse
         </div>
-    </div>
-
-</div>
-
+                </div>
+                </div>
 @endsection
+

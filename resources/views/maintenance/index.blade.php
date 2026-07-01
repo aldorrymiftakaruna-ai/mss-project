@@ -52,8 +52,7 @@
             <tr class="hover:bg-gray-50 report-row" data-shift="{{ $report->shift }}" data-status="{{ $report->status }}">
                 <td class="px-5 py-3 text-gray-600">{{ $report->tanggal->format('d M Y') }}</td>
                 <td class="px-5 py-3">
-                    <div class="font-medium text-gray-800">{{ $report->asset->name }}</div>
-                    <div class="text-xs text-gray-400 font-mono">{{ $report->asset->tag_no }}</div>
+                    <div class="font-medium text-gray-800">{{ $report->asset->description }}</div>
                 </td>
                 <td class="px-5 py-3 text-gray-500">Shift {{ $report->shift }}</td>
                 <td class="px-5 py-3 capitalize text-gray-600">{{ $report->jenis }}</td>
@@ -98,7 +97,8 @@
                     <select name="asset_id" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                         <option value="">Pilih Equipment</option>
                         @foreach($assets as $asset)
-                        <option value="{{ $asset->id }}">{{ $asset->tag_no }} — {{ $asset->name }}</option>
+
+                        <option value="{{ $asset->id }}">{{ $asset->tag_no }} — {{ $asset->description }}</option>
                         @endforeach
                     </select>
                 </div>

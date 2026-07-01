@@ -7,9 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 class SparePart extends Model
 {
     protected $fillable = [
-        'kode_material', 'deskripsi', 'satuan',
-        'stok_minimum', 'stok_tersedia', 'kategori'
+        'company_id', 'kode_material', 'deskripsi', 'satuan',
+        'stok_minimum', 'stok_tersedia', 'kategori',
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     public function assets()
     {
@@ -18,9 +23,9 @@ class SparePart extends Model
                     ->withTimestamps();
     }
 
-    public function stocks()
+    public function images()
     {
-        return $this->hasMany(SparePartStock::class);
+        return $this->hasMany(SparePartImage::class);
     }
 
     public function getStatusAttribute()

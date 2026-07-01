@@ -6,7 +6,6 @@
 
 @section('content')
 
-{{-- Alert --}}
 @if(session('success'))
 <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
     {{ session('success') }}
@@ -16,7 +15,7 @@
 @if(session('import_errors') && count(session('import_errors')))
 <div class="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm">
     <p class="font-semibold mb-1">Beberapa baris dilewati:</p>
-    <ul class="list-disc list-inside space-y-0.5">
+    <ul class="list-disc list-inside space-y-0.5 text-xs">
         @foreach(session('import_errors') as $err)
             <li>{{ $err }}</li>
         @endforeach
@@ -27,6 +26,9 @@
 {{-- Header & Actions --}}
 <div class="flex items-center justify-between mb-5">
     <div class="flex gap-3">
+        <input type="text" id="search-asset" placeholder="Cari tag / nama / model..."
+            oninput="filterSearch(this.value)"
+            class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white w-48">
         <select class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white" onchange="filterPT(this.value)">
             <option value="">Semua PT</option>
             @foreach($companies as $company)
@@ -45,6 +47,10 @@
            class="border border-gray-200 text-gray-600 text-sm px-4 py-2 rounded-lg hover:bg-gray-50 transition">
             Import Excel
         </a>
+        <a href="{{ route('assets.bom.import.form') }}"
+           class="border border-gray-200 text-gray-600 text-sm px-4 py-2 rounded-lg hover:bg-gray-50 transition">
+            Import BOM
+        </a>
         <button onclick="document.getElementById('modal-add').classList.remove('hidden')"
             class="bg-[#0E9E8E] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#0a7a6d] transition">
             + Tambah Equipment
@@ -61,8 +67,7 @@
                 <th class="px-5 py-3 text-left">Nama Equipment</th>
                 <th class="px-5 py-3 text-left">Model</th>
                 <th class="px-5 py-3 text-left">PT</th>
-                <th class="px-5 py-3 text-left">Status</th>
-                <th class="px-5 py-3 text-left">Aksi</th>
+                                <th class="px-5 py-3 text-left">Status</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
@@ -70,40 +75,31 @@
             <tr class="hover:bg-gray-50 asset-row"
                 data-pt="{{ $asset->company->code }}"
                 data-status="{{ $asset->status }}">
-
-                {{-- Tag No — klik → detail --}}
                 <td class="px-5 py-3">
                     <a href="{{ route('assets.show', $asset) }}"
                        class="font-mono text-xs font-semibold text-[#0E9E8E] hover:underline">
                         {{ $asset->tag_no }}
                     </a>
                 </td>
-
                 <td class="px-5 py-3 font-medium text-gray-800">{{ $asset->description }}</td>
                 <td class="px-5 py-3 text-gray-500">{{ $asset->model ?? '—' }}</td>
                 <td class="px-5 py-3 text-gray-500">{{ $asset->company->code }}</td>
-
-                {{-- Status badge 3 level --}}
                 <td class="px-5 py-3">
-                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $asset->statusColor() }}">
+                    @php
+                        $colors = [
+                            'normal' => 'bg-green-100 text-green-700',
+                            'alarm'  => 'bg-amber-100 text-amber-700',
+                            'danger' => 'bg-red-100 text-red-700',
+                        ];
+                    @endphp
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$asset->status] ?? 'bg-gray-100 text-gray-600' }}">
                         {{ ucfirst($asset->status) }}
                     </span>
-                </td>
-
-                {{-- Aksi --}}
-                <td class="px-5 py-3 flex items-center gap-3">
-                    <a href="{{ route('assets.show', $asset) }}"
-                       class="text-[#0E9E8E] hover:underline text-xs">Detail</a>
-                    <form action="{{ route('assets.destroy', $asset) }}" method="POST"
-                        onsubmit="return confirm('Hapus equipment {{ $asset->tag_no }}?')">
-                        @csrf @method('DELETE')
-                        <button class="text-red-400 hover:text-red-600 text-xs">Hapus</button>
-                    </form>
                 </td>
             </tr>
             @empty
             <tr>
-                <td colspan="7" class="px-5 py-10 text-center text-gray-400">Belum ada data equipment.</td>
+                <td colspan="5" class="px-5 py-10 text-center text-gray-400">Belum ada data equipment.</td>
             </tr>
             @endforelse
         </tbody>
@@ -186,6 +182,12 @@
 </div>
 
 <script>
+function filterSearch(val) {
+    val = val.toLowerCase();
+    document.querySelectorAll('.asset-row').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(val) ? '' : 'none';
+    });
+}
 function filterPT(val) {
     document.querySelectorAll('.asset-row').forEach(row => {
         row.style.display = (!val || row.dataset.pt === val) ? '' : 'none';
