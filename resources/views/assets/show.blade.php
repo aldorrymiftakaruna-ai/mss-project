@@ -359,10 +359,9 @@
         <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr class="text-xs text-gray-500 uppercase">
+                    <th class="px-5 py-3 text-left">ID Temuan</th>
                     <th class="px-5 py-3 text-left">Tanggal</th>
-                    <th class="px-5 py-3 text-left">Dilaporkan Oleh</th>
                     <th class="px-5 py-3 text-left">Kategori</th>
-                    <th class="px-5 py-3 text-left">Deskripsi Temuan</th>
                     <th class="px-5 py-3 text-center">Severity</th>
                     <th class="px-5 py-3 text-center">Status</th>
                 </tr>
@@ -371,23 +370,32 @@
                 @foreach($asset->cmFindings->take(15) as $finding)
                 @php
                     $sevColor = match(strtolower($finding->severity ?? '')) {
-                        'high', 'tinggi'   => 'bg-red-100 text-red-700',
-                        'medium', 'sedang' => 'bg-amber-100 text-amber-700',
-                        default            => 'bg-green-100 text-green-700',
+                        'high'   => 'bg-red-100 text-red-700',
+                        'medium' => 'bg-amber-100 text-amber-700',
+                        'low'    => 'bg-green-100 text-green-700',
+                        default  => '',
                     };
                     $stColor = match(strtolower($finding->status ?? '')) {
-                        'open'              => 'bg-red-100 text-red-700',
-                        'in_progress'       => 'bg-amber-100 text-amber-700',
-                        'closed', 'selesai' => 'bg-green-100 text-green-700',
-                        default             => 'bg-gray-100 text-gray-600',
+                        'open'   => 'bg-red-100 text-red-700',
+                        'closed' => 'bg-green-100 text-green-700',
+                        default  => 'bg-gray-100 text-gray-600',
                     };
                 @endphp
                 <tr class="hover:bg-gray-50">
+                    <td class="px-5 py-3 whitespace-nowrap">
+                        <a href="{{ route('cm.findings.show', $finding) }}" class="font-mono text-xs font-semibold text-[#0E9E8E] hover:underline">
+                            {{ $finding->finding_code ?? '—' }}
+                        </a>
+                    </td>
                     <td class="px-5 py-3 whitespace-nowrap text-gray-700">{{ \Carbon\Carbon::parse($finding->tanggal)->format('d M Y') }}</td>
-                    <td class="px-5 py-3 text-gray-600">{{ $finding->reported_by ?? '—' }}</td>
                     <td class="px-5 py-3 text-gray-600 capitalize">{{ $finding->kategori ?? '—' }}</td>
-                    <td class="px-5 py-3 text-gray-700">{{ $finding->deskripsi ?? '—' }}</td>
-                    <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $sevColor }}">{{ ucfirst($finding->severity ?? '—') }}</span></td>
+                    <td class="px-5 py-3 text-center">
+                        @if($finding->severity)
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $sevColor }}">{{ ucfirst($finding->severity) }}</span>
+                        @else
+                        <span class="text-gray-300">—</span>
+                        @endif
+                    </td>
                     <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $stColor }}">{{ ucfirst($finding->status ?? '—') }}</span></td>
                 </tr>
                 @endforeach
