@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Log;
  * WizardReportSaverTrait
  *
  * Menangani penyimpanan laporan ke database dan helper terkait foto:
- *   - saveReport()                  : Simpan laporan ke DB setelah konfirmasi Step 8
- *   - buildConfirmationSummary()    : Bangun pesan ringkasan Step 8
+ *   - saveReport()                  : Simpan laporan ke DB setelah konfirmasi Step 6
+ *   - buildConfirmationSummary()    : Bangun pesan ringkasan Step 6
  *   - generateReportCode()          : Generate kode RPT-YYYYMMDD-XXXX unik per hari
  *   - isValidLocalPhotoPath()       : Validasi apakah nilai adalah path lokal foto
  *   - filterValidLocalPhotoPaths()  : Filter array foto, buang yang bukan path lokal
@@ -35,11 +35,11 @@ use Illuminate\Support\Facades\Log;
 trait WizardReportSaverTrait
 {
     // =========================================================
-    // STEP 8 — KONFIRMASI & SIMPAN
+    // STEP 6 — KONFIRMASI & SIMPAN
     // =========================================================
 
     /**
-     * Bangun pesan ringkasan konfirmasi untuk Step 8.
+     * Bangun pesan ringkasan konfirmasi untuk Step 6.
      * Menampilkan semua data yang akan disimpan agar teknisi bisa verifikasi.
      *
      * @param  array $state State wizard
@@ -47,12 +47,20 @@ trait WizardReportSaverTrait
      */
     protected function buildConfirmationSummary(array $state): array
     {
+        // Guard clause: jika tidak ada equipment terpilih, tolak lanjut ke konfirmasi
+        if (empty($state['equipment_id'])) {
+            return [
+                'message'  => 'Equipment belum dipilih. Laporan tidak dapat dilanjutkan. Silakan mulai ulang dengan menyebutkan kode equipment yang valid.',
+                'keyboard' => [],
+            ];
+        }
+
         $equipmentLabel = $this->equipmentLabel($state);
         $duration       = $this->formatDuration($state['work_duration_minutes'] ?? 0);
         $rootCause      = $state['root_cause'] ?? '-';
         $photoDocCount  = count($state['photo_documentation'] ?? []);
 
-        $msg  = "*Step 8/8* — Konfirmasi Laporan\n\n";
+        $msg  = "*Step 6/6* — Konfirmasi Laporan\n\n";
         $msg .= "Periksa ringkasan berikut sebelum disimpan:\n\n";
         $msg .= "*Equipment* : {$equipmentLabel}\n";
         $msg .= "*Durasi*    : {$duration}\n";

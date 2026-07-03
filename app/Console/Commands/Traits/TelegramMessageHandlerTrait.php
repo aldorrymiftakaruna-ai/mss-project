@@ -89,6 +89,20 @@ trait TelegramMessageHandlerTrait
 
         // Routing teks: wizard aktif atau mulai baru
         if ($this->reportWizard->hasActiveWizard((string) $chatId)) {
+            // Validasi apakah state wizard valid (equipment sudah terpilih)
+            $state = $this->reportWizard->getState((string) $chatId);
+            $isAdvancedStep = in_array($state['step'] ?? '', [
+                \App\Services\Telegram\ReportWizardService::STEP_WORK_DURATION,
+                \App\Services\Telegram\ReportWizardService::STEP_ROOT_CAUSE,
+                \App\Services\Telegram\ReportWizardService::STEP_PHOTO_DOCUMENTATION,
+                \App\Services\Telegram\ReportWizardService::STEP_CONFIRMATION,
+                \App\Services\Telegram\ReportWizardService::STEP_DONE,
+            ]);
+            if ($isAdvancedStep && empty($state['equipment_id'])) {
+                $this->reportWizard->destroyWizard((string) $chatId);
+                $this->sendMessage($chatId, 'Sesi laporan sebelumnya tidak valid dan telah dibatalkan. Silakan kirim ulang pesan laporan untuk memulai dari awal.');
+                return;
+            }
             $this->handleWizardText($chatId, $text);
         } else {
             $this->handleReport($chatId, $employee, $text);
@@ -347,7 +361,7 @@ trait TelegramMessageHandlerTrait
     /**
      * Mulai wizard laporan baru dari teks yang dikirim employee.
      *
-     * Laporan hanya disimpan ke DB setelah employee mengonfirmasi di Step 8.
+     * Laporan hanya disimpan ke DB setelah employee mengonfirmasi di Step 6.
      *
      * @param int|string $chatId   ID chat
      * @param Employee   $employee Objek employee pengirim

@@ -50,7 +50,7 @@
                     <span class="text-gray-400">Telegram</span>
                     <span class="text-gray-600">
                         @if($employee->telegram_username)
-                            @{{ $employee->telegram_username }}
+                            {{ $employee->telegram_username }}
                         @else
                             <span class="text-gray-300">—</span>
                         @endif

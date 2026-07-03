@@ -50,7 +50,7 @@
                 </td>
                 <td class="px-5 py-3 text-gray-500">
                     @if($employee->telegram_username)
-                        <span class="text-[#0E9E8E]">@{{ $employee->telegram_username }}</span>
+                        <span class="text-[#0E9E8E]">{{ $employee->telegram_username }}</span>
                     @else
                         <span class="text-gray-300 text-xs">Belum terhubung</span>
                     @endif

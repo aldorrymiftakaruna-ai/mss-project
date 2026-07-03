@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Log;
  * Trait TelegramSenderTrait
  *
  * Digunakan oleh PollTelegramUpdates untuk semua operasi pengiriman dan pengeditan
- * pesan ke Telegram Bot API. Semua method membaca token dari config('services.telegram.bot_token').
+
+ * pesan ke Telegram Bot API. Semua method membaca token dari config('telegram.bot_token').
  * Error HTTP ditangani secara internal — method tidak melempar exception ke pemanggil.
  *
  * Method yang tersedia:
@@ -31,7 +32,7 @@ trait TelegramSenderTrait
      */
     private function sendMessage(int|string $chatId, string $text): void
     {
-        $token = config('services.telegram.bot_token');
+        $token = config('telegram.bot_token');
 
         try {
             Http::timeout(10)->post("https://api.telegram.org/bot{$token}/sendMessage", [
@@ -60,7 +61,7 @@ trait TelegramSenderTrait
      */
     private function sendMessageWithKeyboard(int|string $chatId, string $text, array $buttons): void
     {
-        $token    = config('services.telegram.bot_token');
+        $token    = config('telegram.bot_token');
         $keyboard = [];
 
         foreach ($buttons as $btn) {
@@ -98,6 +99,8 @@ trait TelegramSenderTrait
      */
     private function sendChatAction(int|string $chatId, string $action = 'typing'): void
     {
+
+
         $token = config('services.telegram.bot_token');
         try {
             Http::timeout(5)->post("https://api.telegram.org/bot{$token}/sendChatAction", [

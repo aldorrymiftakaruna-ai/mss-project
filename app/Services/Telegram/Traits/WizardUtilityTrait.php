@@ -102,7 +102,7 @@ trait WizardUtilityTrait
      */
     protected function equipmentLabel(array $state): string
     {
-        $tag  = $state['equipment_tag'] ?? 'Equipment';
+        $tag  = $state['equipment_tag'] ?? 'Equipment belum dipilih';
         $desc = $state['equipment_description'] ?? '';
         if ($desc) {
             $label = "{$tag} — {$desc}";

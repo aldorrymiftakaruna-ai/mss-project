@@ -146,7 +146,7 @@ class ReportWizardService
     // STEP 1 — PENCARIAN EQUIPMENT
     // =========================================================
 
-    /**
+        /**
      * Cari equipment berdasarkan teks laporan menggunakan pencocokan
      * tag_no atau kata kunci di kolom description.
      *
@@ -155,7 +155,7 @@ class ReportWizardService
      *   2. Jika tidak, cari kata kunci dari teks ke description Asset
      *   3. Jika ditemukan 1 -> kunci langsung
      *   4. Jika > 1 -> tampilkan daftar kandidat
-     *   5. Jika 0 -> tanya apakah area work atau ketik ulang
+     *   5. Jika 0 -> minta ketik ulang kode equipment
      *
      * @param  string $chatId Chat ID Telegram
      * @param  array  $state  State wizard saat ini
@@ -179,19 +179,16 @@ class ReportWizardService
         $assets   = $this->searchAssets($keywords);
 
         if ($assets->count() === 0) {
-            // Tidak ditemukan — tanya kerja area atau ketik ulang
+            // Tidak ditemukan — minta ketik ulang kode equipment
             $state['step'] = self::STEP_EQUIPMENT_CLARIFY;
             $state['retype_attempts'] = 0;
             $this->saveState($chatId, $state);
 
             return [
                 'message'  => "Equipment tidak ditemukan dari laporan kamu.\n\n" .
-                    "Pilih salah satu:\n" .
-                    "1. *Ketik ulang* kode equipment\n" .
-                    "2. *Kerja area* (tanpa equipment spesifik)",
+                    "Ketik ulang kode equipment:",
                 'keyboard' => [
                     ['text' => 'Ketik Ulang', 'callback_data' => 'equipment_candidate:retype'],
-                    ['text' => 'Kerja Area',  'callback_data' => 'work_type:area'],
                 ],
             ];
         }
@@ -228,10 +225,10 @@ class ReportWizardService
         ];
     }
 
-    /**
+        /**
      * Handle ketika teknisi mengetik ulang kode equipment.
      * Cari berdasarkan input teks baru.
-     * Jika gagal 3 kali, fallback ke kerja area.
+     * Jika gagal 3 kali, wizard dibatalkan.
      *
      * @param  string $chatId Chat ID Telegram
      * @param  string $text   Input teks baru dari teknisi
@@ -244,10 +241,11 @@ class ReportWizardService
         $state['retype_attempts'] = $attempts;
 
         if ($attempts > 3) {
-            // Fallback ke kerja area setelah 3 kali gagal
-            $state['is_area_work'] = true;
-            $this->saveState($chatId, $state);
-            return $this->advanceToWorkDuration($chatId, $state);
+            $this->destroyWizard($chatId);
+            return [
+                'message'  => 'Equipment tidak ditemukan setelah 3 kali percobaan. Laporan dibatalkan. Ketik pesan baru untuk memulai laporan dari awal.',
+                'keyboard' => [],
+            ];
         }
 
         // Cari tag_no eksak
@@ -263,15 +261,13 @@ class ReportWizardService
         $keywords = $this->extractKeywords($text);
         $assets   = $this->searchAssets($keywords);
 
-        if ($assets->count() === 0) {
+                if ($assets->count() === 0) {
             $remaining = 3 - $attempts;
             return [
                 'message'  => "Equipment \"{$text}\" tidak ditemukan.\n" .
                     "Sisa percobaan: {$remaining}x\n\n" .
-                    "Ketik ulang kode equipment, atau pilih *Kerja Area*:",
-                'keyboard' => [
-                    ['text' => 'Kerja Area', 'callback_data' => 'work_type:area'],
-                ],
+                    "Ketik ulang kode equipment:",
+                'keyboard' => [],
             ];
         }
 
@@ -349,38 +345,91 @@ class ReportWizardService
                       'pada', 'saya', 'kami', 'kita', 'oleh', 'atau', 'saat',
                       'juga', 'dapat', 'bisa', 'harus', 'setelah', 'sebelum'];
 
-        $words = str_word_count(strtolower($text), 1);
+        $words = preg_split('/[\s,\.\!\?]+/', strtolower($text), -1, PREG_SPLIT_NO_EMPTY);
         $words = array_filter($words, fn($w) => strlen($w) >= 3 && !in_array($w, $stopWords));
 
         return array_values($words);
     }
 
-    /**
-     * Cari Asset berdasarkan kata kunci.
-     * Cocokkan dengan tag_no, description, atau functional_location.
-     *
-     * @param  array $keywords Array of keyword string
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
-    protected function searchAssets(array $keywords): \Illuminate\Database\Eloquent\Collection
-    {
-        if (empty($keywords)) {
-            return collect();
+        /**
+         * Pisahkan keyword menjadi kandidat tag asset (mengandung huruf DAN
+         * angka sekaligus) dan kata umum (tanpa kombinasi huruf+angka).
+         * Kandidat tag diprioritaskan untuk pencarian asset karena pola
+         * tag_no di sistem ini selalu campuran huruf+angka (verifikasi
+         * 03/07/2026, contoh: P01, RS01, LB04, SC03A, 6842FN02).
+         *
+         * @param  array $keywords Array of keyword string
+         * @return array ['tag_candidates' => [...], 'general_words' => [...]]
+         */
+        protected function separateTagCandidates(array $keywords): array
+        {
+            $tagCandidates = [];
+            $generalWords  = [];
+
+            foreach ($keywords as $word) {
+                $hasLetter = preg_match('/[a-z]/i', $word);
+                $hasDigit  = preg_match('/\d/', $word);
+
+                if ($hasLetter && $hasDigit) {
+                    $tagCandidates[] = $word;
+                } else {
+                    $generalWords[] = $word;
+                }
+            }
+
+            return [
+                'tag_candidates' => $tagCandidates,
+                'general_words'  => $generalWords,
+            ];
         }
 
-        $query = Asset::query();
+        /**
+         * Cari Asset berdasarkan kata kunci.
+         * Jika ada tag_candidates (kata mengandung huruf+angka), HANYA
+         * pakai itu untuk pencarian (AND). Jika tidak ada, pakai semua
+         * general_words dengan OR di dalam satu grouped where.
+         *
+         * @param  array $keywords Array of keyword string
+         * @return \Illuminate\Database\Eloquent\Collection
+         */
+        protected function searchAssets(array $keywords): \Illuminate\Database\Eloquent\Collection
+        {
+            if (empty($keywords)) {
+                return collect();
+            }
 
-        foreach ($keywords as $keyword) {
-            $like = '%' . $keyword . '%';
-            $query->where(function ($q) use ($like) {
-                $q->where('tag_no', 'like', $like)
-                  ->orWhere('description', 'like', $like)
-                  ->orWhere('functional_location', 'like', $like);
-            });
+            $separated = $this->separateTagCandidates($keywords);
+            $tagCandidates = $separated['tag_candidates'];
+            $generalWords  = $separated['general_words'];
+
+            $query = Asset::query();
+
+            if (!empty($tagCandidates)) {
+                // Prioritas: cari berdasarkan tag_candidates saja (AND)
+                foreach ($tagCandidates as $keyword) {
+                    $like = '%' . $keyword . '%';
+                    $query->where(function ($q) use ($like) {
+                        $q->where('tag_no', 'like', $like)
+                          ->orWhere('description', 'like', $like);
+                    });
+                }
+            } elseif (!empty($generalWords)) {
+                // Fallback: cari berdasarkan general_words dengan OR
+                // Semua kondisi dibungkus dalam satu where() agar tidak
+                // merusak scoping query dari luar (misal ->where('company_id', ...))
+                $query->where(function ($q) use ($generalWords) {
+                    foreach ($generalWords as $keyword) {
+                        $like = '%' . $keyword . '%';
+                        $q->orWhere(function ($sub) use ($like) {
+                            $sub->where('tag_no', 'like', $like)
+                                ->orWhere('description', 'like', $like);
+                        });
+                    }
+                });
+            }
+
+            return $query->limit(20)->get();
         }
-
-        return $query->limit(20)->get();
-    }
 
     /**
      * Ambil state wizard dari cache.
@@ -412,8 +461,9 @@ class ReportWizardService
      * @param string $chatId
      * @return void
      */
-    protected function destroyWizard(string $chatId): void
+    public function destroyWizard(string $chatId): void
     {
         Cache::forget(self::CACHE_PREFIX . $chatId);
     }
 }
+

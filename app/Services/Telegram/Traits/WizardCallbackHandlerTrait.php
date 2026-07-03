@@ -16,11 +16,8 @@ trait WizardCallbackHandlerTrait
             $this->destroyWizard($chatId);
             return ['message' => 'Laporan dibatalkan.', 'keyboard' => []];
         }
-        if (str_starts_with($callbackData, 'equipment_candidate:')) {
+                if (str_starts_with($callbackData, 'equipment_candidate:')) {
             return $this->handleEquipmentCandidateCallback($chatId, $callbackData, $state);
-        }
-        if (str_starts_with($callbackData, 'work_type:')) {
-            return $this->handleWorkTypeCallback($chatId, $callbackData, $state);
         }
         return $this->errorResponse('Callback tidak dikenali.');
     }
@@ -67,20 +64,8 @@ trait WizardCallbackHandlerTrait
         if (!$asset) return $this->errorResponse('Equipment tidak ditemukan.');
         return $this->lockEquipmentAndAdvance($chatId, $asset, $state);
     }
-    protected function handleWorkTypeCallback(string $chatId, string $callbackData, array $state): array
-    {
-        $type = explode(':', $callbackData)[1] ?? null;
-        unset($state['awaiting_work_type']);
-        if ($type === 'equipment') {
-            $state['retype_attempts'] = 0; $this->saveState($chatId, $state);
-            return ['message' => 'Ketik kode equipment:', 'keyboard' => []];
-        }
-        if ($type === 'area') {
-            $state['is_area_work'] = true; $this->saveState($chatId, $state);
-            return $this->advanceToWorkDuration($chatId, $state);
-        }
-        return $this->errorResponse('Pilihan tidak dikenal.');
-    }
+    
+    
     protected function lockEquipmentAndAdvance(string $chatId, Asset $asset, array $state): array
     {
         $state['equipment_id'] = $asset->id;
