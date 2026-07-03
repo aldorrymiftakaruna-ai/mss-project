@@ -5,17 +5,19 @@ namespace App\Services\Telegram\Traits;
 /**
  * WizardStepHandlerTrait
  *
- * Menangani logika handler untuk setiap step wizard laporan:
- *   - buildWorkDurationPrompt()       : Bangun prompt Step 3 (input durasi)
- *   - handleDurationInput()           : Proses teks durasi yang diketik teknisi
- *   - advanceToWorkDuration()         : Transisi ke Step 3 dari step sebelumnya
- *   - buildRootCausePrompt()          : Bangun prompt Step 4 (input root cause)
- *   - handleRootCauseInput()          : Proses teks root cause dari teknisi
- *   - buildPhotoDocumentationPrompt() : Bangun prompt Step 5 (foto dokumentasi)
- *   - handlePhotoCommand()            : Proses perintah teks di step foto
- *   - addPhotoToStep()                : Tambah file ID foto ke state wizard
- *   - advanceFromPhotoStep()          : Transisi keluar dari step foto ke konfirmasi
- *   - handleConfirmation()            : Proses teks konfirmasi di Step 6
+ * Menangani logika handler untuk setiap step wizard laporan.
+ * Step baru: catatan/feedback setelah foto.
+ *
+ * Alur lengkap:
+ *   1. Equipment
+ *   2. Shift
+ *   3. Jenis
+ *   4. Status
+ *   5. Durasi
+ *   6. Root Cause
+ *   7. Foto
+ *   8. Catatan/Feedback
+ *   9. Konfirmasi
  *
  * Trait ini bergantung pada method berikut dari kelas pemakai:
  *   - parseDurationToMinutes(string $text): ?int
@@ -24,7 +26,7 @@ namespace App\Services\Telegram\Traits;
  *   - reportTypeLabel(array $state): string
  *   - saveState(string $chatId, array $state): void
  *   - destroyWizard(string $chatId): void
- *   - buildRootCausePrompt(array $state): array  -- dipakai oleh handleDurationInput
+ *   - buildRootCausePrompt(array $state): array
  *   - buildPhotoDocumentationPrompt(array $state): array
  *   - buildConfirmationSummary(array $state): array
  *   - saveReport(string $chatId, array $state): array
@@ -32,15 +34,15 @@ namespace App\Services\Telegram\Traits;
 trait WizardStepHandlerTrait
 {
     // =========================================================
-    // STEP 3 — WAKTU PENGERJAAN
+    // STEP DURASI
     // =========================================================
 
     /**
-     * Transisi ke Step 3 dan tampilkan prompt durasi.
+     * Transisi ke Step Durasi.
      *
-     * @param  string $chatId Chat ID Telegram
-     * @param  array  $state  State wizard saat ini
-     * @return array  Respons
+     * @param  string $chatId
+     * @param  array  $state
+     * @return array
      */
     protected function advanceToWorkDuration(string $chatId, array $state): array
     {
@@ -51,17 +53,15 @@ trait WizardStepHandlerTrait
     }
 
     /**
-     * Bangun pesan prompt Step 3 (durasi pengerjaan).
-     * Jika AI sudah mendeteksi durasi, tampilkan keyboard konfirmasi.
+     * Bangun pesan prompt durasi.
      *
-     * @param  array $state        State wizard
-     * @param  bool  $autoDetected Apakah durasi sudah terdeteksi oleh AI
-     * @return array Respons
+     * @param  array $state
+     * @param  bool  $autoDetected
+     * @return array
      */
     protected function buildWorkDurationPrompt(array $state, bool $autoDetected = false): array
     {
         $equipmentLabel = $this->equipmentLabel($state);
-        $typeLabel      = $this->reportTypeLabel($state);
 
         if ($autoDetected && !empty($state['work_duration_minutes'])) {
             $formatted = $this->formatDuration($state['work_duration_minutes']);
@@ -70,7 +70,7 @@ trait WizardStepHandlerTrait
                 ['text' => 'Ubah Durasi',      'callback_data' => 'wizard:confirm:duration_change'],
             ];
             return [
-                'message' => "Laporan *{$typeLabel}* untuk *{$equipmentLabel}* diterima.\n\n" .
+                'message' => "Laporan untuk *{$equipmentLabel}* diterima.\n\n" .
                     "Durasi pekerjaan terdeteksi: *{$formatted}*\n" .
                     "Sudah sesuai?",
                 'keyboard' => $keyboard,
@@ -78,21 +78,20 @@ trait WizardStepHandlerTrait
         }
 
         return [
-            'message'  => "Equipment dikunci: *{$equipmentLabel}*\n" .
-                "Jenis: *{$typeLabel}*\n\n" .
-                "*Step 3/6* — Berapa lama pekerjaan berlangsung?\n" .
+            'message'  => "Equipment: *{$equipmentLabel}*\n\n" .
+                "*Step 5/9* — Berapa lama pekerjaan berlangsung?\n" .
                 "Ketik durasi (contoh: `2 jam`, `30 menit`, `1.5 jam`)",
             'keyboard' => [],
         ];
     }
 
     /**
-     * Proses teks durasi yang diketik teknisi di Step 3.
+     * Proses teks durasi.
      *
-     * @param  string $chatId Chat ID Telegram
-     * @param  string $text   Input teks dari teknisi
-     * @param  array  $state  State wizard saat ini
-     * @return array  Respons
+     * @param  string $chatId
+     * @param  string $text
+     * @param  array  $state
+     * @return array
      */
     protected function handleDurationInput(string $chatId, string $text, array $state): array
     {
@@ -114,25 +113,27 @@ trait WizardStepHandlerTrait
     }
 
     // =========================================================
-    // STEP 4 — ROOT CAUSE
+    // STEP ROOT CAUSE
     // =========================================================
 
     /**
-     * Bangun pesan prompt Step 4 (root cause / catatan).
-     * Jika AI sudah mendeteksi root cause, tampilkan keyboard konfirmasi.
+     * Bangun pesan prompt root cause.
      *
-     * @param  array $state State wizard
-     * @return array Respons
+     * @param  array $state
+     * @return array
      */
     protected function buildRootCausePrompt(array $state): array
     {
         $equipmentLabel = $this->equipmentLabel($state);
         $duration       = $this->formatDuration($state['work_duration_minutes'] ?? 0);
+        $shift          = $state['shift'] ?? '-';
+        $typeLabel      = $this->reportTypeLabel($state);
+        $statusLabel    = ($state['status'] ?? 'belum_selesai') === 'selesai' ? 'Selesai' : 'Belum Selesai';
 
         if (!empty($state['root_cause'])) {
             $existing = $state['root_cause'];
             return [
-                'message'  => "*Step 4/6* — Catatan / Root Cause\n\n" .
+                'message'  => "*Step 6/9* — Root Cause\n\n" .
                     "Root cause yang terdeteksi dari laporan:\n_{$existing}_\n\n" .
                     "Gunakan catatan ini atau ketik yang baru:",
                 'keyboard' => [
@@ -143,21 +144,22 @@ trait WizardStepHandlerTrait
         }
 
         return [
-            'message'  => "*Step 4/6* — Catatan / Root Cause\n\n" .
-                "Equipment: *{$equipmentLabel}*\n" .
+            'message'  => "*Step 6/9* — Root Cause\n\n" .
+                "Equipment: *{$equipmentLabel}*  |  Shift: *{$shift}*\n" .
+                "Jenis: *{$typeLabel}*  |  Status: *{$statusLabel}*\n" .
                 "Durasi: *{$duration}*\n\n" .
-                "Ketik *catatan* (penyebab kerusakan/pekerjaan):",
+                "Ketik *root cause* (penyebab kerusakan / pekerjaan yang dilakukan):",
             'keyboard' => [],
         ];
     }
 
     /**
-     * Proses teks root cause yang diketik teknisi di Step 4.
+     * Proses teks root cause.
      *
-     * @param  string $chatId Chat ID Telegram
-     * @param  string $text   Input teks dari teknisi
-     * @param  array  $state  State wizard saat ini
-     * @return array  Respons
+     * @param  string $chatId
+     * @param  string $text
+     * @param  array  $state
+     * @return array
      */
     protected function handleRootCauseInput(string $chatId, string $text, array $state): array
     {
@@ -179,16 +181,14 @@ trait WizardStepHandlerTrait
     }
 
     // =========================================================
-    // STEP 5 — FOTO DOKUMENTASI
+    // STEP FOTO DOKUMENTASI
     // =========================================================
 
     /**
-     * Bangun pesan prompt Step 5 (foto dokumentasi).
-     * Menyesuaikan pesan berdasarkan jumlah foto yang sudah masuk
-     * dan apakah ada foto awal dari Step 1.
+     * Bangun pesan prompt foto dokumentasi.
      *
-     * @param  array $state State wizard
-     * @return array Respons
+     * @param  array $state
+     * @return array
      */
     protected function buildPhotoDocumentationPrompt(array $state): array
     {
@@ -201,7 +201,7 @@ trait WizardStepHandlerTrait
 
         if ($hasInitialPhoto && $currentPhotos === 0) {
             return [
-                'message'  => "*Step 5/6* — Foto Dokumentasi\n\n" .
+                'message'  => "*Step 7/9* — Foto Dokumentasi\n\n" .
                     "{$label}Tambah foto lagi, atau lanjutkan?",
                 'keyboard' => [
                     ['text' => 'Cukup, Lanjutkan',  'callback_data' => 'wizard:confirm:photo_doc_done'],
@@ -213,7 +213,7 @@ trait WizardStepHandlerTrait
 
         if ($currentPhotos > 0) {
             return [
-                'message'  => "*Step 5/6* — Foto Dokumentasi\n\n" .
+                'message'  => "*Step 7/9* — Foto Dokumentasi\n\n" .
                     "{$currentPhotos} foto sudah diterima.\n" .
                     "Kirim foto lagi, atau lanjutkan:",
                 'keyboard' => [
@@ -224,7 +224,7 @@ trait WizardStepHandlerTrait
         }
 
         return [
-            'message'  => "*Step 5/6* — Foto Dokumentasi\n\n" .
+            'message'  => "*Step 7/9* — Foto Dokumentasi\n\n" .
                 "Kirim foto dokumentasi pekerjaan (opsional, bisa lebih dari 1).\n" .
                 "Atau skip jika tidak ada:",
             'keyboard' => [
@@ -233,19 +233,14 @@ trait WizardStepHandlerTrait
         ];
     }
 
-    // =========================================================
-    // HANDLER FOTO (STEP 5)
-    // =========================================================
-
     /**
-     * Proses perintah teks di step foto ("selesai", "skip", dll).
-     * Dipanggil dari handleTextInput ketika step adalah foto.
+     * Proses perintah teks di step foto.
      *
-     * @param  string $chatId    Chat ID Telegram
-     * @param  string $text      Input teks dari teknisi
-     * @param  array  $state     State wizard saat ini
-     * @param  string $photoStep Tipe step: 'documentation'
-     * @return array  Respons
+     * @param  string $chatId
+     * @param  string $text
+     * @param  array  $state
+     * @param  string $photoStep
+     * @return array
      */
     protected function handlePhotoCommand(string $chatId, string $text, array $state, string $photoStep): array
     {
@@ -258,7 +253,7 @@ trait WizardStepHandlerTrait
         $currentCount = count($state['photo_documentation'] ?? []);
 
         return [
-            'message'  => "*Step 5/6* — {$currentCount} foto diterima.\n" .
+            'message'  => "*Step 7/9* — {$currentCount} foto diterima.\n" .
                 "Kirim foto berikutnya, atau ketik *selesai* untuk lanjut.",
             'keyboard' => [
                 ['text' => 'Selesai, Lanjutkan', 'callback_data' => 'wizard:confirm:photo_doc_done'],
@@ -268,13 +263,13 @@ trait WizardStepHandlerTrait
     }
 
     /**
-     * Tambah file ID foto ke state wizard (dipanggil dari handlePhotoInput).
+     * Tambah foto ke state wizard.
      *
-     * @param  string $chatId    Chat ID Telegram
-     * @param  string $fileId    File ID foto dari Telegram
-     * @param  array  $state     State wizard saat ini
-     * @param  string $photoStep Tipe step: 'documentation'
-     * @return array  Respons
+     * @param  string $chatId
+     * @param  string $fileId
+     * @param  array  $state
+     * @param  string $photoStep
+     * @return array
      */
     protected function addPhotoToStep(string $chatId, string $fileId, array $state, string $photoStep): array
     {
@@ -295,13 +290,12 @@ trait WizardStepHandlerTrait
     }
 
     /**
-     * Transisi keluar dari step foto ke Step 6 (konfirmasi).
-     * Jika ada foto awal dari Step 1, di-prepend ke photo_documentation.
+     * Transisi keluar dari step foto ke step catatan/feedback.
      *
-     * @param  string $chatId    Chat ID Telegram
-     * @param  array  $state     State wizard saat ini
-     * @param  string $photoStep Tipe step yang sedang diselesaikan ('documentation')
-     * @return array  Respons
+     * @param  string $chatId
+     * @param  array  $state
+     * @param  string $photoStep
+     * @return array
      */
     protected function advanceFromPhotoStep(string $chatId, array $state, string $photoStep): array
     {
@@ -309,29 +303,84 @@ trait WizardStepHandlerTrait
             if (empty($state['photo_documentation'])) {
                 $state['photo_documentation'] = [];
             }
-            // Prepend foto awal jika belum masuk ke array
             if (!in_array($state['initial_photo_file_id'], $state['photo_documentation'])) {
                 array_unshift($state['photo_documentation'], $state['initial_photo_file_id']);
             }
         }
 
-        // Dari foto dokumentasi langsung ke konfirmasi
+        // Lanjut ke step catatan, bukan langsung konfirmasi
+        $state['step'] = self::STEP_CATATAN;
+        $this->saveState($chatId, $state);
+        return $this->buildCatatanPrompt($state);
+    }
+
+    // =========================================================
+    // STEP CATATAN / FEEDBACK
+    // =========================================================
+
+    /**
+     * Bangun prompt untuk menanyakan catatan/feedback.
+     *
+     * @param  array $state
+     * @return array
+     */
+    protected function buildCatatanPrompt(array $state): array
+    {
+        return [
+            'message'  => "*Step 8/9* — Catatan / Feedback\n\n" .
+                "Adakah catatan atau feedback terhadap pekerjaan ini?\n" .
+                "Ketik catatan, atau skip jika tidak ada.",
+            'keyboard' => [
+                ['text' => 'Skip (Tanpa Catatan)', 'callback_data' => 'wizard:confirm:catatan_skip'],
+            ],
+        ];
+    }
+
+    /**
+     * Proses input catatan/feedback dari teknisi.
+     *
+     * @param  string $chatId
+     * @param  string $text
+     * @param  array  $state
+     * @return array
+     */
+    protected function handleCatatanInput(string $chatId, string $text, array $state): array
+    {
+        $text = strtolower(trim($text));
+
+        if (in_array($text, ['skip', 'lewat', 'tidak', 'none', '-'])) {
+            return $this->advanceFromCatatan($chatId, $state);
+        }
+
+        $state['catatan'] = trim($text);
+        return $this->advanceFromCatatan($chatId, $state);
+    }
+
+    /**
+     * Simpan catatan (atau null jika skip) lalu lanjut ke konfirmasi.
+     *
+     * @param  string $chatId
+     * @param  array  $state
+     * @return array
+     */
+    protected function advanceFromCatatan(string $chatId, array $state): array
+    {
         $state['step'] = self::STEP_CONFIRMATION;
         $this->saveState($chatId, $state);
         return $this->buildConfirmationSummary($state);
     }
 
     // =========================================================
-    // STEP 6 — KONFIRMASI (handler teks)
+    // STEP KONFIRMASI
     // =========================================================
 
     /**
-     * Proses teks konfirmasi ("ya"/"tidak") yang diketik teknisi di Step 6.
+     * Proses teks konfirmasi ("ya"/"tidak").
      *
-     * @param  string $chatId Chat ID Telegram
-     * @param  string $text   Input teks dari teknisi
-     * @param  array  $state  State wizard saat ini
-     * @return array  Respons
+     * @param  string $chatId
+     * @param  string $text
+     * @param  array  $state
+     * @return array
      */
     protected function handleConfirmation(string $chatId, string $text, array $state): array
     {
@@ -349,7 +398,6 @@ trait WizardStepHandlerTrait
             ];
         }
 
-        // Input tidak dikenali — tampilkan ulang ringkasan konfirmasi
         return $this->buildConfirmationSummary($state);
     }
 }

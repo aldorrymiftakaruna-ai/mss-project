@@ -33,6 +33,8 @@ Route::middleware('admin')->group(function () {
     Route::get('/assets/bom/template', [AssetController::class, 'bomTemplate'])->name('assets.bom.template');
     Route::resource('assets', AssetController::class);
     Route::resource('maintenance', MaintenanceController::class);
+    Route::post('/maintenance/{maintenance}/manpower', [MaintenanceController::class, 'addManpower'])->name('maintenance.manpower.store');
+
 
     Route::get('/cm/template', [CmController::class, 'downloadTemplate'])->name('cm.template');
     Route::get('/cm/import', [CmController::class, 'importForm'])->name('cm.import.form');

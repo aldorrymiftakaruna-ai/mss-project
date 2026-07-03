@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class MaintenanceReport extends Model
 {
@@ -48,5 +49,34 @@ class MaintenanceReport extends Model
     public function manpowerLogs()
     {
         return $this->hasMany(ManpowerLog::class);
+    }
+
+    /**
+     * Accessor: array URL publik foto dokumentasi.
+     * Disk diambil dari config('telegram.photo_disk') agar selalu sinkron
+     * dengan disk yang dipakai PhotoStorageService saat menyimpan foto.
+     *
+     * @return array
+     */
+    public function getPhotoDocumentationUrlsAttribute(): array
+    {
+        $disk  = config('telegram.photo_disk', 'public');
+        $paths = $this->photo_documentation ?? [];
+
+        if (empty($paths)) {
+            return [];
+        }
+
+        $urls = [];
+        foreach ($paths as $path) {
+            try {
+                $urls[] = Storage::disk($disk)->url($path);
+            } catch (\Throwable $e) {
+                // Fallback: langsung ke /storage/ path jika disk error
+                $urls[] = url('storage/' . ltrim($path, '/'));
+            }
+        }
+
+        return $urls;
     }
 }

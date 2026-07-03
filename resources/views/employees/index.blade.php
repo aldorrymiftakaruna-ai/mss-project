@@ -14,7 +14,8 @@
 
 <div class="flex items-center justify-between mb-5">
     <select class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
-        <option value="">Semua Role</option>
+                <option value="">Semua Role</option>
+        <option value="supervisor">Supervisor</option>
         <option value="foreman">Foreman</option>
         <option value="teknisi">Teknisi</option>
     </select>
@@ -96,9 +97,10 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="text-xs text-gray-500 mb-1 block">Role *</label>
-                    <select name="role" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                                        <select name="role" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                         <option value="teknisi">Teknisi</option>
                         <option value="foreman">Foreman</option>
+                        <option value="supervisor">Supervisor</option>
                     </select>
                 </div>
                                 <div>

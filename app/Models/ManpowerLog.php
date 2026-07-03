@@ -7,8 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ManpowerLog extends Model
 {
     protected $fillable = [
-        'maintenance_report_id', 'employee_id',
-        'jam_mulai', 'jam_selesai', 'durasi_menit', 'keterangan'
+        'maintenance_report_id', 'employee_id', 'durasi_menit'
     ];
 
     public function maintenanceReport()

@@ -21,11 +21,10 @@
             <option value="3">Shift 3</option>
             <option value="reguler">Shift Reguler</option>
         </select>
-        <select class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white" onchange="filterStatus(this.value)">
+                <select class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white" onchange="filterStatus(this.value)">
             <option value="">Semua Status</option>
-            <option value="open">Open</option>
-            <option value="on_progress">On Progress</option>
-            <option value="done">Done</option>
+            <option value="belum_selesai">Pekerjaan Belum Selesai</option>
+            <option value="selesai">Pekerjaan Selesai</option>
         </select>
     </div>
     <button onclick="document.getElementById('modal-add').classList.remove('hidden')"
@@ -37,19 +36,22 @@
 <div class="bg-white rounded-xl border border-gray-200">
     <table class="w-full text-sm">
         <thead class="border-b border-gray-100">
-            <tr class="text-xs text-gray-500 uppercase">
+                        <tr class="text-xs text-gray-500 uppercase">
+                <th class="px-5 py-3 text-left">Kode Laporan</th>
                 <th class="px-5 py-3 text-left">Tanggal</th>
                 <th class="px-5 py-3 text-left">Equipment</th>
                 <th class="px-5 py-3 text-left">Shift</th>
                 <th class="px-5 py-3 text-left">Jenis</th>
                 <th class="px-5 py-3 text-left">Dilaporkan Oleh</th>
-                <th class="px-5 py-3 text-left">Status</th>
-                <th class="px-5 py-3 text-left">Aksi</th>
+                                <th class="px-5 py-3 text-left">Status</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
             @forelse($reports as $report)
-            <tr class="hover:bg-gray-50 report-row" data-shift="{{ $report->shift }}" data-status="{{ $report->status }}">
+            <tr class="hover:bg-gray-50 report-row cursor-pointer" data-shift="{{ $report->shift }}" data-status="{{ $report->status }}" onclick="window.location='{{ route('maintenance.show', $report) }}'">
+                <td class="px-5 py-3">
+                    <span class="font-mono text-xs font-semibold text-[#0E9E8E]">{{ $report->report_code ?? '#' . $report->id }}</span>
+                </td>
                 <td class="px-5 py-3 text-gray-600">{{ $report->tanggal->format('d M Y') }}</td>
                 <td class="px-5 py-3">
                     <div class="font-medium text-gray-800">{{ $report->asset->description }}</div>
@@ -57,20 +59,13 @@
                 <td class="px-5 py-3 text-gray-500">Shift {{ $report->shift }}</td>
                 <td class="px-5 py-3 capitalize text-gray-600">{{ $report->jenis }}</td>
                 <td class="px-5 py-3 text-gray-600">{{ $report->reporter->name ?? '—' }}</td>
-                <td class="px-5 py-3">
+                                <td class="px-5 py-3">
                     @php
-                        $colors = ['open'=>'bg-red-100 text-red-700','on_progress'=>'bg-amber-100 text-amber-700','done'=>'bg-green-100 text-green-700'];
+                        $colors = ['belum_selesai'=>'bg-red-100 text-red-700','selesai'=>'bg-green-100 text-green-700'];
                     @endphp
                     <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$report->status] }}">
                         {{ ucfirst(str_replace('_', ' ', $report->status)) }}
                     </span>
-                </td>
-                <td class="px-5 py-3">
-                    <form action="{{ route('maintenance.destroy', $report) }}" method="POST"
-                        onsubmit="return confirm('Hapus laporan ini?')">
-                        @csrf @method('DELETE')
-                        <button class="text-red-400 hover:text-red-600 text-xs">Hapus</button>
-                    </form>
                 </td>
             </tr>
             @empty
@@ -135,10 +130,9 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-500 mb-1 block">Status</label>
-                    <select name="status" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                        <option value="open">Open</option>
-                        <option value="on_progress">On Progress</option>
-                        <option value="done">Done</option>
+                                        <select name="status" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <option value="belum_selesai">Pekerjaan Belum Selesai</option>
+                        <option value="selesai">Pekerjaan Selesai</option>
                     </select>
                 </div>
             </div>

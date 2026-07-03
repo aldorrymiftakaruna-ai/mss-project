@@ -18,16 +18,21 @@ class ReportWizardService
     use WizardReportSaverTrait;
     use WizardUtilityTrait;
     use WizardPhotoAddonTrait;
+    use \App\Services\Telegram\Traits\WizardNewStepsTrait;
 
     const CACHE_PREFIX = 'report_wizard:';
     const CACHE_TTL = 7200;
 
-    const STEP_INITIAL = 'initial';
+        const STEP_INITIAL = 'initial';
     const STEP_EQUIPMENT_SEARCH = 'equipment_search';
     const STEP_EQUIPMENT_CLARIFY = 'equipment_clarify';
+    const STEP_SHIFT = 'shift';
+    const STEP_REPORT_TYPE = 'report_type';
+    const STEP_STATUS = 'status';
     const STEP_WORK_DURATION = 'work_duration';
     const STEP_ROOT_CAUSE = 'root_cause';
     const STEP_PHOTO_DOCUMENTATION = 'photo_documentation';
+    const STEP_CATATAN = 'catatan';
     const STEP_CONFIRMATION = 'confirmation';
     const STEP_DONE = 'done';
 
@@ -68,7 +73,7 @@ class ReportWizardService
      * @param  string $text   Input teks dari teknisi
      * @return array  Respons
      */
-    public function handleTextInput(string $chatId, string $text): array
+        public function handleTextInput(string $chatId, string $text): array
     {
         $state = $this->getState($chatId);
         if (!$state) {
@@ -78,12 +83,20 @@ class ReportWizardService
         switch ($state['step']) {
             case self::STEP_EQUIPMENT_CLARIFY:
                 return $this->handleEquipmentRetype($chatId, $text, $state);
+            case self::STEP_SHIFT:
+                return $this->handleShiftInput($chatId, $text, $state);
+            case self::STEP_REPORT_TYPE:
+                return $this->handleReportTypeInput($chatId, $text, $state);
+            case self::STEP_STATUS:
+                return $this->handleStatusInput($chatId, $text, $state);
             case self::STEP_WORK_DURATION:
                 return $this->handleDurationInput($chatId, $text, $state);
             case self::STEP_ROOT_CAUSE:
                 return $this->handleRootCauseInput($chatId, $text, $state);
-            case self::STEP_PHOTO_DOCUMENTATION:
+                        case self::STEP_PHOTO_DOCUMENTATION:
                 return $this->handlePhotoCommand($chatId, $text, $state, 'documentation');
+            case self::STEP_CATATAN:
+                return $this->handleCatatanInput($chatId, $text, $state);
             case self::STEP_CONFIRMATION:
                 return $this->handleConfirmation($chatId, $text, $state);
             default:

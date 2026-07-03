@@ -152,9 +152,11 @@ trait WizardUtilityTrait
             'retype_attempts'      => 0,
             'work_duration_minutes'=> null,
             'root_cause'           => null,
+            'catatan'              => null,
             'initial_photo_file_id'=> null,
             'photo_documentation'  => [],
             'shift'                => null,
+            'status'               => 'belum_selesai',
             'created_at'           => now()->toIso8601String(),
         ];
     }

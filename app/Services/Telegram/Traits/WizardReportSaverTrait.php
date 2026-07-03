@@ -59,13 +59,21 @@ trait WizardReportSaverTrait
         $duration       = $this->formatDuration($state['work_duration_minutes'] ?? 0);
         $rootCause      = $state['root_cause'] ?? '-';
         $photoDocCount  = count($state['photo_documentation'] ?? []);
+        $shift          = $state['shift'] ?? '-';
+        $typeLabel      = $this->reportTypeLabel($state);
+        $statusLabel    = ($state['status'] ?? 'belum_selesai') === 'selesai' ? 'Selesai' : 'Belum Selesai';
+        $catatan        = $state['catatan'] ?? '-';
 
-        $msg  = "*Step 6/6* — Konfirmasi Laporan\n\n";
+        $msg  = "*Step 9/9* — Konfirmasi Laporan\n\n";
         $msg .= "Periksa ringkasan berikut sebelum disimpan:\n\n";
-        $msg .= "*Equipment* : {$equipmentLabel}\n";
-        $msg .= "*Durasi*    : {$duration}\n";
-        $msg .= "*Root Cause*: {$rootCause}\n";
-        $msg .= "*Foto*      : {$photoDocCount} foto\n\n";
+        $msg .= "*Equipment*   : {$equipmentLabel}\n";
+        $msg .= "*Shift*       : {$shift}\n";
+        $msg .= "*Jenis*       : {$typeLabel}\n";
+        $msg .= "*Status*      : {$statusLabel}\n";
+        $msg .= "*Durasi*      : {$duration}\n";
+        $msg .= "*Root Cause*  : {$rootCause}\n";
+        $msg .= "*Foto*        : {$photoDocCount} foto\n";
+        $msg .= "*Catatan*     : {$catatan}\n\n";
         $msg .= "Simpan laporan ini?";
 
         return [
@@ -140,8 +148,16 @@ trait WizardReportSaverTrait
                 'wizard_started_at'     => $state['created_at'] ?? null,
                 'submitted_at'          => now(),
                 'ai_suggestion_json'    => $aiSuggestion,
-                'status'                => 'open',
-                'catatan'               => null,
+                'status'                => $state['status'] ?? 'belum_selesai',
+                'catatan'               => $state['catatan'] ?? null,
+            ]);
+
+            // Buat ManpowerLog otomatis untuk pelapor
+            \App\Models\ManpowerLog::create([
+                'maintenance_report_id' => $report->id,
+                'employee_id'           => $employee->id,
+                'durasi_menit'          => $state['work_duration_minutes'] ?? null,
+                'keterangan'            => 'proses',
             ]);
 
             $this->destroyWizard($chatId);
@@ -155,10 +171,13 @@ trait WizardReportSaverTrait
 
             $equipmentLabel = $this->equipmentLabel($state);
             $duration       = $this->formatDuration($state['work_duration_minutes'] ?? 0);
+            $typeLabel      = $this->reportTypeLabel($state);
+            $statusLabel    = ($state['status'] ?? 'belum_selesai') === 'selesai' ? 'Selesai' : 'Belum Selesai';
 
             $msg  = "*Laporan Berhasil Disimpan!*\n\n";
             $msg .= "Kode Laporan: `{$reportCode}`\n";
             $msg .= "Equipment: {$equipmentLabel}\n";
+            $msg .= "Jenis: {$typeLabel} | Status: {$statusLabel}\n";
             $msg .= "Durasi: {$duration}\n\n";
             $msg .= "Terima kasih, laporan sudah masuk ke sistem.";
 

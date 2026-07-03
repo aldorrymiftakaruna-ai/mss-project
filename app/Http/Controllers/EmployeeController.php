@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\Company;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
@@ -15,18 +16,33 @@ class EmployeeController extends Controller
         return view('employees.index', compact('employees', 'companies'));
     }
 
-    public function show(Employee $employee)
+    public function show(Request $request, Employee $employee)
     {
-        $employee->load(['company', 'manpowerLogs.maintenanceReport.asset']);
+        $filter = $request->get('filter', 'all');
+        $bulan  = $request->get('bulan');
+        $tahun  = $request->get('tahun');
 
-        return view('employees.show', compact('employee'));
+        // Query laporan yang dilaporkan oleh karyawan ini
+        $reportQuery = $employee->maintenanceReports()->getQuery();
+
+        if ($bulan && $tahun) {
+            $reportQuery->whereYear('created_at', $tahun)
+                        ->whereMonth('created_at', $bulan);
+        } elseif ($tahun) {
+            $reportQuery->whereYear('created_at', $tahun);
+        }
+
+        $employee->setRelation('maintenanceReports', $reportQuery->with('asset')->latest()->get());
+        $employee->load('company');
+
+        return view('employees.show', compact('employee', 'filter', 'bulan', 'tahun'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'name'  => 'required|string|max:255',
-            'role'  => 'required|in:foreman,teknisi',
+            'role'  => 'required|in:foreman,teknisi,supervisor',
             'shift' => 'nullable|in:shift,reguler',
         ]);
 
@@ -43,7 +59,7 @@ class EmployeeController extends Controller
     {
         $request->validate([
             'name'              => 'required|string|max:255',
-            'role'              => 'required|in:foreman,teknisi',
+            'role'              => 'required|in:foreman,teknisi,supervisor',
             'shift'             => 'nullable|in:shift,reguler',
             'telegram_id'       => 'nullable|string|max:255',
             'telegram_username' => 'nullable|string|max:255',

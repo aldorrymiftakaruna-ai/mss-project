@@ -416,7 +416,8 @@
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-100">
-                <tr class="text-xs text-gray-500 uppercase">
+                                <tr class="text-xs text-gray-500 uppercase">
+                    <th class="px-5 py-3 text-left">Kode Laporan</th>
                     <th class="px-5 py-3 text-left">Tanggal</th>
                     <th class="px-5 py-3 text-left">Shift</th>
                     <th class="px-5 py-3 text-left">Jenis</th>
@@ -429,20 +430,22 @@
             <tbody class="divide-y divide-gray-50">
                 @foreach($asset->maintenanceReports as $report)
                 @php
-                    $sc = match(strtolower($report->status ?? '')) {
-                        'selesai', 'completed' => 'bg-green-100 text-green-700',
-                        'in_progress'          => 'bg-amber-100 text-amber-700',
-                        'open', 'pending'      => 'bg-red-100 text-red-700',
+                                        $sc = match(strtolower($report->status ?? '')) {
+                        'selesai' => 'bg-green-100 text-green-700',
+                        'belum_selesai'      => 'bg-red-100 text-red-700',
                         default                => 'bg-gray-100 text-gray-600',
                     };
                 @endphp
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='{{ route('maintenance.show', $report) }}'">
+                    <td class="px-5 py-3 whitespace-nowrap">
+                        <span class="font-mono text-xs font-semibold text-[#0E9E8E]">{{ $report->report_code ?? '#' . $report->id }}</span>
+                    </td>
                     <td class="px-5 py-3 whitespace-nowrap text-gray-700">{{ \Carbon\Carbon::parse($report->tanggal)->format('d M Y') }}</td>
                     <td class="px-5 py-3 text-gray-600 capitalize">{{ $report->shift ?? '—' }}</td>
                     <td class="px-5 py-3 text-gray-600 capitalize">{{ $report->jenis ?? '—' }}</td>
                     <td class="px-5 py-3 text-gray-700 max-w-[200px] truncate" title="{{ $report->deskripsi_masalah }}">{{ $report->deskripsi_masalah ?? '—' }}</td>
                     <td class="px-5 py-3 text-gray-600 max-w-[180px] truncate" title="{{ $report->tindakan }}">{{ $report->tindakan ?? '—' }}</td>
-                    <td class="px-5 py-3 text-gray-600">{{ $report->reported_by ?? '—' }}</td>
+                    <td class="px-5 py-3 text-gray-600">{{ $report->reporter->name ?? '—' }}</td>
                     <td class="px-5 py-3 text-center"><span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $sc }}">{{ ucfirst($report->status ?? '—') }}</span></td>
                 </tr>
                 @endforeach

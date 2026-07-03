@@ -89,27 +89,68 @@
     {{-- Right: Riwayat Pekerjaan --}}
     <div class="lg:col-span-2 space-y-6">
 
+        {{-- Filter Periode --}}
+        <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-xs text-gray-400">Filter:</span>
+
+            {{-- Tombol Semua --}}
+            <a href="{{ route('employees.show', $employee) }}"
+               class="text-xs px-3 py-1.5 rounded-lg border transition
+               {{ $filter == 'all' ? 'bg-[#0E9E8E] text-white border-[#0E9E8E]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#0E9E8E]' }}">
+                Semua
+            </a>
+
+            {{-- Filter Bulan + Tahun --}}
+            <form action="{{ route('employees.show', $employee) }}" method="GET" class="flex items-center gap-2">
+                <select name="bulan"
+                    class="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600">
+                    <option value="">Pilih Bulan</option>
+                    @foreach(range(1, 12) as $b)
+                    <option value="{{ $b }}" {{ ($bulan ?? '') == $b ? 'selected' : '' }}>
+                        {{ \Carbon\Carbon::create()->month($b)->format('F') }}
+                    </option>
+                    @endforeach
+                </select>
+                <select name="tahun"
+                    class="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600">
+                    <option value="">Pilih Tahun</option>
+                    @foreach(range(date('Y'), date('Y')) as $t)
+                    <option value="{{ $t }}" {{ ($tahun ?? '') == $t ? 'selected' : '' }}>
+                        {{ $t }}
+                    </option>
+                    @endforeach
+                </select>
+                <button type="submit"
+                    class="text-xs px-3 py-1.5 rounded-lg bg-[#0E9E8E] text-white border border-[#0E9E8E] hover:bg-[#0a7a6d] transition">
+                    Terapkan
+                </button>
+            </form>
+        </div>
+
         {{-- Statistik Ringkas --}}
+        @php
+            $reports = $employee->maintenanceReports ?? collect();
+        @endphp
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                <div class="text-2xl font-bold text-[#0E9E8E]">{{ $employee->manpowerLogs->count() }}</div>
+                <div class="text-2xl font-bold text-[#0E9E8E]">{{ $reports->count() }}</div>
                 <div class="text-xs text-gray-400 mt-1">Total Pekerjaan</div>
             </div>
             <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
                 <div class="text-2xl font-bold text-blue-500">
-                    {{ $employee->manpowerLogs->where('keterangan', 'selesai')->count() }}
+                    {{ $reports->where('status', 'selesai')->count() }}
                 </div>
                 <div class="text-xs text-gray-400 mt-1">Selesai</div>
             </div>
             <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
                 <div class="text-2xl font-bold text-yellow-500">
-                    {{ $employee->manpowerLogs->where('keterangan', 'proses')->count() }}
+                    {{ $reports->where('status', '!=', 'selesai')->count() }}
                 </div>
-                <div class="text-xs text-gray-400 mt-1">Dalam Proses</div>
+                <div class="text-xs text-gray-400 mt-1">Belum Selesai</div>
             </div>
             <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
                 <div class="text-2xl font-bold text-gray-500">
-                    {{ $employee->manpowerLogs->sum('durasi_menit') }} mnt
+                    {{ $reports->sum('work_duration_minutes') }} mnt
                 </div>
                 <div class="text-xs text-gray-400 mt-1">Total Durasi</div>
             </div>
@@ -121,40 +162,36 @@
                 <h3 class="font-semibold text-gray-700 text-sm">Riwayat Pekerjaan</h3>
             </div>
 
-            @if($employee->manpowerLogs->count() > 0)
+            @if($reports->count() > 0)
                 <div class="divide-y divide-gray-50">
-                    @foreach($employee->manpowerLogs as $log)
+                    @foreach($reports as $report)
                     <div class="px-5 py-4 hover:bg-gray-50/50">
                         <div class="flex items-start justify-between gap-4">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 mb-1">
-                                    @if($log->maintenanceReport)
-                                        <a href="{{ route('maintenance.show', $log->maintenanceReport) }}"
-                                            class="text-sm font-medium text-[#0E9E8E] hover:underline truncate">
-                                            {{ $log->maintenanceReport->asset->name ?? '—' }}
-                                        </a>
-                                    @else
-                                        <span class="text-sm text-gray-500">Laporan tidak tersedia</span>
-                                    @endif
-                                    @if($log->keterangan == 'selesai')
-                                        <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 shrink-0">Selesai</span>
-                                    @elseif($log->keterangan == 'proses')
-                                        <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700 shrink-0">Proses</span>
-                                    @elseif($log->keterangan)
-                                        <span class="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 shrink-0">{{ $log->keterangan }}</span>
-                                    @endif
+                                    <a href="{{ route('maintenance.show', $report) }}"
+                                        class="text-sm font-medium text-[#0E9E8E] hover:underline truncate">
+                                        {{ $report->asset->tag_no ?? '—' }} {{ $report->asset->description ? '- ' . $report->asset->description : '' }}
+                                    </a>
+                                    @php
+                                        $stsColor = match($report->status) {
+                                            'selesai' => 'bg-green-100 text-green-700',
+                                            default => 'bg-yellow-100 text-yellow-700',
+                                        };
+                                        $stsLabel = match($report->status) {
+                                            'selesai' => 'Selesai',
+                                            default => 'Belum Selesai',
+                                        };
+                                    @endphp
+                                    <span class="px-1.5 py-0.5 rounded text-xs font-medium {{ $stsColor }} shrink-0">{{ $stsLabel }}</span>
                                 </div>
                                 <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-                                    @if($log->maintenanceReport)
-                                        <span>{{ $log->maintenanceReport->tanggal ? $log->maintenanceReport->tanggal->format('d M Y') : '' }}</span>
-                                        <span class="capitalize">{{ $log->maintenanceReport->jenis }}</span>
-                                        <span class="capitalize">{{ $log->maintenanceReport->shift }}</span>
-                                    @endif
-                                    @if($log->jam_mulai && $log->jam_selesai)
-                                        <span>{{ $log->jam_mulai }} - {{ $log->jam_selesai }}</span>
-                                    @endif
-                                    @if($log->durasi_menit)
-                                        <span>{{ $log->durasi_menit }} menit</span>
+                                    <span>{{ $report->tanggal ? $report->tanggal->format('d M Y') : '' }}</span>
+                                    <span>#{{ $report->report_code }}</span>
+                                    <span class="capitalize">{{ $report->jenis }}</span>
+                                    <span class="capitalize">Shift {{ $report->shift }}</span>
+                                    @if($report->work_duration_minutes)
+                                        <span>{{ $report->work_duration_minutes }} mnt</span>
                                     @endif
                                 </div>
                             </div>
@@ -195,6 +232,7 @@
                     <select name="role" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                         <option value="teknisi" {{ $employee->role == 'teknisi' ? 'selected' : '' }}>Teknisi</option>
                         <option value="foreman" {{ $employee->role == 'foreman' ? 'selected' : '' }}>Foreman</option>
+                        <option value="supervisor" {{ $employee->role == 'supervisor' ? 'selected' : '' }}>Supervisor</option>
                     </select>
                 </div>
                 <div>
