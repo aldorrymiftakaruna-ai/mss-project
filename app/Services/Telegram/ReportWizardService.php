@@ -457,7 +457,7 @@ class ReportWizardService
         protected function searchAssets(array $keywords): \Illuminate\Database\Eloquent\Collection
         {
             if (empty($keywords)) {
-                return collect();
+                return new \Illuminate\Database\Eloquent\Collection();
             }
 
             $separated = $this->separateTagCandidates($keywords);
