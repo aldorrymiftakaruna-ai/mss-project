@@ -4,54 +4,38 @@
 Project utama dan SATU-SATUNYA target semua perubahan:
 C:\Users\ASUS\mss-project
 
-Folder C:\Users\ASUS\Herd\referenceeric HANYA referensi untuk dibaca,
-JANGAN PERNAH ditulis/diedit. Folder C:\Users\ASUS\Herd\referenceeric-old-backup
-adalah arsip lama, tidak dipakai.
-
 Setiap kali menyebutkan kondisi suatu file ("file X sudah ada", "kolom
 Y begini"), WAJIB sertakan path lengkap absolut yang benar-benar dibaca
 saat itu juga. Jangan mengandalkan laporan dari sesi sebelumnya tanpa
 verifikasi ulang.
 
-
 ## KEPUTUSAN ARSITEKTUR FINAL (JANGAN TANYA ULANG, SUDAH DIPUTUSKAN)
 
-1. TIDAK memakai model Technician atau Report dari referenceeric.
-   Pakai yang sudah ada di mss-project:
-   - Teknisi/user bot -> App\Models\Employee (tabel employees),
-     kolom telegram_id (bigint, nullable, unique)
-   - Laporan -> App\Models\MaintenanceReport (tabel maintenance_reports)
-   Model/tabel Technician dan Report LAMA di mss-project TIDAK dihapus
-   (masih ada sisa file, jangan disentuh), tapi TIDAK dipakai untuk
-   fitur baru apapun.
-
-2. Tabel maintenance_reports sudah punya kolom (JANGAN dibuat ulang):
+1. Teknisi/user bot -> App\Models\Employee (tabel employees),
+   kolom telegram_id (bigint, nullable, unique)
+2. Laporan -> App\Models\MaintenanceReport (tabel maintenance_reports)
+3. Tabel maintenance_reports sudah punya kolom (JANGAN dibuat ulang):
    report_code, work_duration_minutes, root_cause,
    photo_documentation (json), wizard_started_at, submitted_at,
    ai_suggestion_json (json), ai_analyzed, ai_confidence,
    shift (enum '1','2','3','reguler', NOT NULL, fallback ke 'reguler'
    jika tidak diisi wizard).
-
-3. ai_aliases: pakai employee_id (bukan technician_id), TIDAK ada
+4. ai_aliases: pakai employee_id (bukan technician_id), TIDAK ada
    kolom area_id sama sekali (dihapus dari desain, mss-project tidak
    punya konsep Area/functional_loc).
-
-4. Asset di mss-project TIDAK punya tech_ident_no, functional_loc,
+5. Asset di mss-project TIDAK punya tech_ident_no, functional_loc,
    atau area_id. Kolom yang ada: tag_no, description, company_id.
    Pencarian asset pakai tag_no + description saja.
-
-5. Tema visual WAJIB: warna aksen teal #0E9E8E (BUKAN biru/blue seperti
-   referenceeric). Vanilla JS (BUKAN Alpine.js x-data). Layout memakai
+6. Tema visual WAJIB: warna aksen teal #0E9E8E (BUKAN biru/blue).
+   Vanilla JS (BUKAN Alpine.js x-data). Layout memakai
    @section('page-title', ...) dan @section('page-sub', ...) --
    BUKAN struktur @yield('breadcrumb'). Referensi pola styling yang
    sudah benar: resources/views/cm/index.blade.php dan
    resources/views/ai-providers/index.blade.php.
-
-6. layouts/app.blade.php WAJIB punya @stack('scripts') sebelum </body>
+7. layouts/app.blade.php WAJIB punya @stack('scripts') sebelum </body>
    dan <meta name="csrf-token" content="{{ csrf_token() }}"> di <head>
    (sudah ditambahkan, jangan dihapus).
-
-7. Config Telegram HANYA disimpan di config/telegram.php, diakses via
+8. Config Telegram HANYA disimpan di config/telegram.php, diakses via
    config('telegram.bot_token'), config('telegram.bot_username'), dst.
    config/services.php JUGA punya key 'telegram' sebagai peninggalan —
    TIDAK dihapus, tapi kode BARU harus konsisten pakai
@@ -82,10 +66,6 @@ verifikasi ulang.
    php -r atau file_exists() di terminal. Untuk file kritis, verifikasi
    ukuran file (byte) sebagai pengecekan tambahan, jangan hanya percaya
    isi yang ditampilkan tool.
-9. SELALU gunakan path ABSOLUT lengkap (C:\Users\ASUS\mss-project\...)
-   untuk operasi tulis/edit, tidak terkecuali. JANGAN PERNAH path
-   relatif -- workspace ini multi-root dengan referenceeric dan path
-   relatif terbukti bisa salah folder.
 
 ## RIWAYAT INSIDEN (pelajaran, jangan diulang)
 
@@ -107,12 +87,7 @@ verifikasi ulang.
    "Target class AdminMiddleware does not exist". Laporan "sudah
    selesai" dari sesi sebelumnya TERBUKTI SALAH.
 
-3. AI sempat salah membaca kondisi mss-project dengan mengambil isi
-   dari referenceeric (2 folder terbuka di 1 workspace membingungkan
-   tool baca file). Contoh: melaporkan layouts/app.blade.php mss-project
-   pakai @yield('breadcrumb') padahal itu isi file referenceeric.
-
-4. File config/telegram.php sempat menjadi 0 byte (kosong total)
+3. File config/telegram.php sempat menjadi 0 byte (kosong total)
    akibat proses tool write yang gagal secara diam-diam, menyebabkan
    config('telegram') mengembalikan integer 1 alih-alih array (ini
    adalah perilaku default PHP: file kosong yang di-include tanpa
@@ -124,18 +99,6 @@ verifikasi ulang.
    seharusnya ada) padahal file di disk benar-benar 0 byte — tool
    tidak bisa dipercaya penuh untuk verifikasi, HARUS dicek ukuran
    file juga (misal lewat dir/ls), bukan cuma isi yang ditampilkan.
-
-5. Tool create_new_file dan edit_existing_file sempat SALAH
-   MENARGETKAN folder C:\Users\ASUS\Herd\referenceeric padahal
-   diminta menulis ke C:\Users\ASUS\mss-project, karena workspace
-   multi-root (dua folder dibuka sekaligus di satu window VSCode)
-   membuat resolusi path relatif menjadi ambigu bagi tool. Ini
-   ditemukan tidak sengaja saat debug Insiden #4. Karena referenceeric
-   seharusnya read-only dan tidak punya git history untuk verifikasi
-   kerusakan, folder tersebut di-CLONE ULANG dari GitHub
-   (rikchodam-glitch/oleochemicalReport) untuk memastikan keasliannya.
-   Folder lama disimpan sebagai referenceeric-old-backup (tidak
-   dipakai lagi, hanya arsip).
 
 <!-- Tambahkan insiden baru di bawah ini, nomor urut lanjut -->
 
@@ -154,8 +117,7 @@ verifikasi ulang.
    mulai kerja apapun
 2. Sebutkan file apa saja yang akan disentuh sebelum mulai edit
 3. Untuk fitur baru/kompleks ATAU untuk bug fix: baca dan laporkan dulu
-   kondisi file terkait (dari mss-project DAN referenceeric jika
-   relevan), TUNGGU konfirmasi manusia sebelum menulis kode
+   kondisi file terkait, TUNGGU konfirmasi manusia sebelum menulis kode
 4. Setiap file yang diubah ditulis ulang lengkap (kecuali perubahan
    kecil, lihat Aturan Wajib Edit File poin 2)
 5. Jika file dibutuhkan tapi belum jelas isinya, baca dulu, jangan
