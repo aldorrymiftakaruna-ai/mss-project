@@ -28,10 +28,10 @@
         <div class="text-3xl font-bold text-amber-500">{{ $stokKritis }}</div>
         <div class="text-xs text-gray-400 mt-1">PERLU REORDER</div>
     </div>
-    <div class="bg-white rounded-xl p-5 border border-gray-200">
-        <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Efektivitas Kerja</div>
-        <div class="text-3xl font-bold text-blue-500">{{ $durasiEfektifKaryawan }}%</div>
-        <div class="text-xs text-gray-400 mt-1">{{ $totalKaryawanAktif }} KARYAWAN · {{ round($totalDurasiMingguIni / 60, 1) }} JAM/MINGGU</div>
+        <div class="bg-white rounded-xl p-5 border border-gray-200">
+        <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Total Jam Kerja</div>
+        <div class="text-3xl font-bold text-blue-500">{{ $totalJamMingguIni }} <span class="text-lg font-normal text-gray-400">jam</span></div>
+        <div class="text-xs text-gray-400 mt-1">{{ $totalLaporanMinggu }} LAPORAN · {{ $totalKaryawanAktif }} KARYAWAN</div>
     </div>
 </div>
 

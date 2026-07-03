@@ -31,11 +31,12 @@ class DashboardController extends Controller
         $laporanHariIni    = MaintenanceReport::whereDate('created_at', today())->count();
         $stokKritis        = SparePart::whereColumn('stok_tersedia', '<', 'stok_minimum')->count();
 
-        // Durasi Efektif Karyawan minggu ini
-        $efektif = $this->hitungDurasiEfektifMingguan();
-        $durasiEfektifKaryawan = $efektif['persentase'];
-        $totalKaryawanAktif    = $efektif['total_karyawan'];
-        $totalDurasiMingguIni  = $efektif['total_durasi_menit'];
+        // Durasi Kerja Karyawan minggu ini (dari work_duration_minutes)
+        $durasiKerja = $this->hitungDurasiKerjaMingguan();
+        $totalMenitMingguIni  = $durasiKerja['total_menit'];
+        $totalJamMingguIni    = $durasiKerja['total_jam'];
+        $totalKaryawanAktif   = $durasiKerja['total_karyawan'];
+        $totalLaporanMinggu   = $durasiKerja['total_laporan'];
 
         // ──────────────────────────────────────────────
         // 2. Mini Chart — Laporan 7 hari terakhir
@@ -56,19 +57,20 @@ class DashboardController extends Controller
         // 5. Rekomendasi DSS
         // ──────────────────────────────────────────────
         $rekomendasi = $this->generateRekomendasi(
-            $equipmentDanger,
-            $stokKritis,
-            $efektif
-        );
+              $equipmentDanger,
+              $stokKritis,
+              $durasiKerja
+          );
 
         return view('dashboard', compact(
             'totalAssets',
             'equipmentDanger',
             'laporanHariIni',
             'stokKritis',
-            'durasiEfektifKaryawan',
+            'totalMenitMingguIni',
+            'totalJamMingguIni',
             'totalKaryawanAktif',
-            'totalDurasiMingguIni',
+            'totalLaporanMinggu',
             'chart7Hari',
             'topEquipmentRusak',
             'cmAlerts',
@@ -77,38 +79,27 @@ class DashboardController extends Controller
     }
 
     /**
-     * Hitung persentase durasi efektif kerja karyawan minggu ini.
-     * Target: 40 jam (2400 menit) per karyawan aktif per minggu.
+     * Hitung total durasi kerja karyawan minggu ini dari work_duration_minutes.
      *
-     * @return array ['persentase' => float, 'total_karyawan' => int, 'total_durasi_menit' => int]
+     * @return array ['total_menit' => int, 'total_jam' => float, 'total_karyawan' => int, 'total_laporan' => int]
      */
-    private function hitungDurasiEfektifMingguan(): array
+    private function hitungDurasiKerjaMingguan(): array
     {
         $mulaiMinggu = Carbon::now()->startOfWeek();
         $akhirMinggu = Carbon::now()->endOfWeek();
 
         $totalKaryawanAktif = Employee::where('is_active', true)->count();
 
-        $totalDurasi = (int) ManpowerLog::whereBetween('created_at', [$mulaiMinggu, $akhirMinggu])
-            ->sum('durasi_menit');
+        $reportMingguIni = MaintenanceReport::whereBetween('created_at', [$mulaiMinggu, $akhirMinggu]);
 
-        if ($totalKaryawanAktif < 1) {
-            return [
-                'persentase'        => 0,
-                'total_karyawan'    => 0,
-                'total_durasi_menit'=> $totalDurasi,
-            ];
-        }
-
-        $targetTotal = $totalKaryawanAktif * 40 * 60;
-        $persentase  = $targetTotal > 0
-            ? round(($totalDurasi / $targetTotal) * 100, 1)
-            : 0;
+        $totalMenit   = (int) $reportMingguIni->sum('work_duration_minutes');
+        $totalLaporan = $reportMingguIni->count();
 
         return [
-            'persentase'        => min($persentase, 100),
-            'total_karyawan'    => $totalKaryawanAktif,
-            'total_durasi_menit'=> $totalDurasi,
+            'total_menit'     => $totalMenit,
+            'total_jam'       => $totalMenit > 0 ? round($totalMenit / 60, 1) : 0,
+            'total_karyawan'  => $totalKaryawanAktif,
+            'total_laporan'   => $totalLaporan,
         ];
     }
 
@@ -173,7 +164,7 @@ class DashboardController extends Controller
      * @param array $efektif
      * @return array
      */
-    private function generateRekomendasi(int $equipmentDanger, int $stokKritis, array $efektif): array
+    private function generateRekomendasi(int $equipmentDanger, int $stokKritis, array $durasiKerja): array
     {
         $rekomendasi = [];
 
@@ -208,18 +199,18 @@ class DashboardController extends Controller
             ];
         }
 
-        // 4. Efektivitas jam kerja
-        if ($efektif['persentase'] < 50 && $efektif['total_karyawan'] > 0) {
+        // 4. Total jam kerja minggu ini
+        if ($durasiKerja['total_laporan'] > 0 && $durasiKerja['total_jam'] < 10 && $durasiKerja['total_karyawan'] > 0) {
             $rekomendasi[] = [
                 'level' => 'med',
-                'title' => "Efektivitas kerja {$efektif['persentase']}% — perlu ditinjau",
-                'desc'  => 'Total durasi reporting minggu ini rendah. Pastikan karyawan melakukan reporting atau investigasi penyebab.',
+                'title' => "Total {$durasiKerja['total_jam']} jam kerja minggu ini — rendah",
+                'desc'  => "{$durasiKerja['total_laporan']} laporan dari {$durasiKerja['total_karyawan']} karyawan. Pastikan reporting berjalan optimal.",
             ];
-        } elseif ($efektif['persentase'] > 90 && $efektif['total_karyawan'] > 0) {
+        } elseif ($durasiKerja['total_jam'] > 80 && $durasiKerja['total_karyawan'] > 0) {
             $rekomendasi[] = [
                 'level' => 'low',
-                'title' => "Efektivitas kerja {$efektif['persentase']}% — baik",
-                'desc'  => 'Produktivitas reporting minggu ini tinggi. Pertahankan.',
+                'title' => "Total {$durasiKerja['total_jam']} jam kerja minggu ini — padat",
+                'desc'  => 'Aktivitas maintenance tinggi. Pastikan tidak ada overloading pada teknisi.',
             ];
         }
 
