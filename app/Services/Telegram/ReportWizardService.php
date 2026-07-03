@@ -98,7 +98,7 @@ class ReportWizardService
             $state['initial_photo_file_id'] = $photoFileId;
         }
 
-        $this->saveState($chatId, $state);
+                        $this->saveState($chatId, $state);
 
         Log::info('Wizard: AI analysis completed', [
             'chat_id'    => $chatId,
@@ -401,23 +401,45 @@ class ReportWizardService
      * @return array  Array of keyword string
      */
         protected function extractKeywords(string $text): array
-    {
-        $stopWords = ['yang', 'dan', 'di', 'ke', 'dari', 'ini', 'itu', 'ada',
-                      'tidak', 'sudah', 'belum', 'akan', 'dengan', 'untuk',
-                      'pada', 'saya', 'kami', 'kita', 'oleh', 'atau', 'saat',
-                      'juga', 'dapat', 'bisa', 'harus', 'setelah', 'sebelum'];
+        {
+            $stopWords = ['yang', 'dan', 'di', 'ke', 'dari', 'ini', 'itu', 'ada',
+                          'tidak', 'sudah', 'belum', 'akan', 'dengan', 'untuk',
+                          'pada', 'saya', 'kami', 'kita', 'oleh', 'atau', 'saat',
+                          'juga', 'dapat', 'bisa', 'harus', 'setelah', 'sebelum'];
 
-        $words = preg_split('/[\s,\.\!\?]+/', strtolower($text), -1, PREG_SPLIT_NO_EMPTY);
-        $words = array_filter($words, function ($w) use ($stopWords) {
-            // Kata pendek (< 3 karakter) tetap diambil jika kombinasi huruf+angka (kode asset)
-            if (strlen($w) < 3) {
-                return preg_match('/[a-z]/i', $w) && preg_match('/\d/', $w);
+            $words = preg_split('/[\s,\.\!\?]+/', strtolower($text), -1, PREG_SPLIT_NO_EMPTY);
+
+            // Gabung token berurutan yang membentuk kode asset (huruf+angka terpisah spasi)
+            // Misal: "rs 01" -> "rs01", "sc 06" -> "sc06"
+            // Syarat: token1 hanya huruf (>=2 char), token2 hanya angka (>=1 char)
+            $merged = [];
+            $i = 0;
+            while ($i < count($words)) {
+                if ($i + 1 < count($words)) {
+                    $token1 = $words[$i];
+                    $token2 = $words[$i + 1];
+                    if (preg_match('/^[a-z]{2,}$/', $token1) && preg_match('/^\d+$/', $token2)) {
+                        $combined = $token1 . $token2;
+                        if (strlen($combined) <= 6) {
+                            $merged[] = $combined;
+                            $i += 2;
+                            continue;
+                        }
+                    }
+                }
+                $merged[] = $words[$i];
+                $i++;
             }
-            return !in_array($w, $stopWords);
-        });
 
-        return array_values($words);
-    }
+            $words = array_filter($merged, function ($w) use ($stopWords) {
+                if (strlen($w) < 3) {
+                    return preg_match('/[a-z]/i', $w) && preg_match('/\d/', $w);
+                }
+                return !in_array($w, $stopWords);
+            });
+
+            return array_values($words);
+        }
 
         /**
          * Pisahkan keyword menjadi kandidat tag asset (mengandung huruf DAN
