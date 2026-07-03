@@ -3,6 +3,7 @@
 namespace App\Services\Telegram;
 
 use App\Models\Asset;
+use App\Services\AiService;
 use App\Services\Telegram\Traits\WizardCallbackHandlerTrait;
 use App\Services\Telegram\Traits\WizardPhotoAddonTrait;
 use App\Services\Telegram\Traits\WizardReportSaverTrait;
@@ -40,17 +41,21 @@ class ReportWizardService
 
     const ROOT_CAUSE_MIN_LENGTH = 3;
 
-    protected PhotoStorageService $photoStorage;
+        protected PhotoStorageService $photoStorage;
 
-    public function __construct(PhotoStorageService $photoStorage)
+    protected AiService $aiService;
+
+    public function __construct(PhotoStorageService $photoStorage, AiService $aiService)
     {
         $this->photoStorage = $photoStorage;
+        $this->aiService    = $aiService;
     }
 
-    /**
+        /**
      * Mulai sesi wizard baru untuk chat tertentu.
      * Hancurkan sesi sebelumnya jika ada, buat state awal,
-     * lalu lanjut ke Step 1: pencarian equipment.
+     * lalu jalankan AI analysis untuk mendeteksi asset, durasi, dan root cause.
+     * Kemudian lanjut ke Step 1: pencarian equipment.
      *
      * @param  string      $chatId       Chat ID Telegram
      * @param  string      $text         Teks laporan awal dari teknisi
@@ -61,10 +66,48 @@ class ReportWizardService
     {
         $this->destroyWizard($chatId);
         $state = $this->createInitialState($chatId, $text);
+
+        // Analisis teks laporan via AI (Groq/LLM) untuk deteksi awal asset,
+        // durasi, dan root cause. Jika AI tidak tersedia, fallback ke keyword matching.
+        $analysis = $this->aiService->analyzeReportText($text);
+        $state['ai_analysis'] = $analysis;
+
+        // Isi state dengan hasil AI agar step-step wizard berikutnya auto-terisi
+        if (!empty($analysis['detected_asset_id'])) {
+            $asset = Asset::find($analysis['detected_asset_id']);
+            if ($asset) {
+                $state['equipment_id']         = $asset->id;
+                $state['equipment_tag']        = $asset->tag_no;
+                $state['equipment_description'] = $asset->description;
+            }
+        }
+
+        if (!empty($analysis['report_type']) && in_array($analysis['report_type'], ['corrective', 'preventive'])) {
+            $state['report_type'] = $analysis['report_type'];
+        }
+
+        if (!empty($analysis['parsed_duration_minutes'])) {
+            $state['work_duration_minutes'] = (int) $analysis['parsed_duration_minutes'];
+        }
+
+        if (!empty($analysis['parsed_root_cause'])) {
+            $state['root_cause'] = $analysis['parsed_root_cause'];
+        }
+
         if ($photoFileId) {
             $state['initial_photo_file_id'] = $photoFileId;
         }
+
         $this->saveState($chatId, $state);
+
+        Log::info('Wizard: AI analysis completed', [
+            'chat_id'    => $chatId,
+            'confidence' => $analysis['confidence'] ?? 0,
+            'asset_id'   => $state['equipment_id'],
+            'duration'   => $state['work_duration_minutes'],
+            'root_cause' => $state['root_cause'],
+        ]);
+
         return $this->processEquipmentSearch($chatId, $state);
     }
 
