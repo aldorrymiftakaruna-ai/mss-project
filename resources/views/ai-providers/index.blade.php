@@ -72,11 +72,11 @@
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-    @forelse($providers as $provider)
+    @forelse($providers as $i => $provider)
         @php
             $providerStats = $statsPerProvider[$provider->id] ?? null;
         @endphp
-        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4 {{ $i === 0 && count($recentLogs) > 0 ? '' : '' }}">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -181,6 +181,60 @@
                 </div>
             </div>
         </div>
+
+        {{-- Taruh log pemakaian di sebelah kanan provider pertama --}}
+        @if($i === 0 && count($recentLogs) > 0)
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="font-medium text-gray-900">Log Pemakaian Terbaru</h3>
+                <span class="text-xs text-gray-400" id="log-count-label">{{ min(count($recentLogs), 5) }}/{{ count($recentLogs) }} entri</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100">
+                            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Provider</th>
+                            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Jenis</th>
+                            <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Token</th>
+                            <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Resp.</th>
+                            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Status</th>
+                            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Waktu</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-table-body" class="divide-y divide-gray-50">
+                        @forelse($recentLogs as $i => $log)
+                            <tr class="hover:bg-gray-50 transition-colors {{ $i >= 5 ? 'hidden' : '' }}" data-log-index="{{ $i }}">
+                                <td class="px-4 py-2.5 text-gray-600 text-xs">{{ $log->provider?->name ?? '-' }}</td>
+                                <td class="px-4 py-2.5">
+                                    @if($log->request_type)
+                                        <span class="font-mono text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">{{ $log->request_type }}</span>
+                                    @else
+                                        <span class="text-gray-300 text-xs">--</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-2.5 text-right font-mono text-xs text-gray-700">{{ number_format($log->tokens_used) }}</td>
+                                <td class="px-4 py-2.5 text-right text-xs text-gray-500">{{ $log->response_time_ms ? number_format($log->response_time_ms) . 'ms' : '--' }}</td>
+                                <td class="px-4 py-2.5"><x-status-badge :status="$log->status" /></td>
+                                <td class="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">{{ $log->created_at->diffForHumans() }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-5 py-8 text-center text-gray-400 text-sm">Belum ada pemakaian.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+                @if(count($recentLogs) > 5)
+                <div class="px-5 py-3 border-t border-gray-100 text-center">
+                    <button onclick="toggleLogs()" id="btn-toggle-logs" class="text-sm text-[#0E9E8E] hover:text-[#0a7a6d] font-medium">
+                        Tampilkan Semua
+                    </button>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
     @empty
         <div class="md:col-span-2 bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-400">
             Belum ada AI Provider. Tambahkan provider pertama.
@@ -245,62 +299,7 @@
     </div>
 @endif
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 class="font-medium text-gray-900">Log Pemakaian Terbaru</h3>
-            <span class="text-xs text-gray-400" id="log-count-label">{{ min(count($recentLogs), 5) }}/{{ count($recentLogs) }} entri</span>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="bg-gray-50 border-b border-gray-100">
-                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Provider</th>
-                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Jenis</th>
-                        <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Token</th>
-                        <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Resp.</th>
-                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Status</th>
-                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Waktu</th>
-                    </tr>
-                </thead>
-                <tbody id="log-table-body" class="divide-y divide-gray-50">
-                    @forelse($recentLogs as $i => $log)
-                        <tr class="hover:bg-gray-50 transition-colors {{ $i >= 5 ? 'hidden' : '' }}" data-log-index="{{ $i }}">
-                            <td class="px-4 py-2.5 text-gray-600 text-xs">{{ $log->provider?->name ?? '-' }}</td>
-                            <td class="px-4 py-2.5">
-                                @if($log->request_type)
-                                    <span class="font-mono text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">{{ $log->request_type }}</span>
-                                @else
-                                    <span class="text-gray-300 text-xs">--</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-2.5 text-right font-mono text-xs text-gray-700">{{ number_format($log->tokens_used) }}</td>
-                            <td class="px-4 py-2.5 text-right text-xs text-gray-500">{{ $log->response_time_ms ? number_format($log->response_time_ms) . 'ms' : '--' }}</td>
-                            <td class="px-4 py-2.5"><x-status-badge :status="$log->status" /></td>
-                            <td class="px-4 py-2.5 text-xs text-gray-400 whitespace-nowrap">{{ $log->created_at->diffForHumans() }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-5 py-8 text-center text-gray-400 text-sm">Belum ada pemakaian.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-            @if(count($recentLogs) > 5)
-            <div class="px-5 py-3 border-t border-gray-100 text-center">
-                <button onclick="toggleLogs()" id="btn-toggle-logs" class="text-sm text-[#0E9E8E] hover:text-[#0a7a6d] font-medium">
-                    Tampilkan Semua
-                </button>
-            </div>
-            @endif
-        </div>
-    </div>
-
-</div>
-
-</div>
-
+{{-- Modal Edit --}}
 <div id="editProvider" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center" onclick="if(event.target===this)closeModal('editProvider')">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">

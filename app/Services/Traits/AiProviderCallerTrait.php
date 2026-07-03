@@ -25,15 +25,16 @@ trait AiProviderCallerTrait
      * Analisis teks laporan menggunakan provider AI (Groq/LLM).
      *
      * Membangun prompt dengan daftar asset dari database,
-     * lalu meneruskannya ke Groq. Mengembalikan null jika tidak ada provider
-     * yang tersedia atau respons tidak dapat diparse.
+     * lalu meneruskannya ke Groq. Jika provider gagal, coba provider
+     * berikutnya secara otomatis (failover chain).
      *
-     * @param string $text Teks laporan yang akan dianalisis
+     * @param string      $text     Teks laporan yang akan dianalisis
+     * @param int|null    $retryFrom Provider ID yang sudah dicoba (internal)
      * @return array|null Hasil analisis atau null jika AI tidak tersedia/gagal
      */
-    protected function analyzeWithAi(string $text): ?array
+    protected function analyzeWithAi(string $text, ?int $retryFrom = null): ?array
     {
-        $provider = $this->getBestProvider();
+        $provider = $this->getBestProvider($retryFrom);
         if (!$provider) {
             Log::info('AI Service: No provider available, using keyword fallback');
             return null;
@@ -76,7 +77,7 @@ Balas HANYA JSON (tanpa markdown, tanpa tag):
 PROMPT;
 
             $response = $this->callGroq($provider, $prompt);
-            if ($response) {
+            if ($response !== null) {
                 $cleaned = $this->stripJsonFence($response);
                 $parsed  = json_decode($cleaned, true);
 
@@ -90,8 +91,17 @@ PROMPT;
                     'cleaned' => substr($cleaned, 0, 200),
                 ]);
             }
+
+            // Gagal — coba provider berikutnya (failover)
+            Log::info('AI Service: Failover ke provider berikutnya', [
+                'failed_provider' => $provider->name,
+            ]);
+            return $this->analyzeWithAi($text, $provider->id);
+
         } catch (\Exception $e) {
             Log::warning("AI Service analyze error: " . $e->getMessage());
+            // Coba provider berikutnya
+            return $this->analyzeWithAi($text, $provider->id);
         }
 
         return null;
@@ -187,7 +197,7 @@ PROMPT;
             // Tandai provider exhausted jika quota habis (HTTP 429)
             if ($response->status() === 429) {
                 $provider->update(['status' => 'exhausted']);
-                Log::warning("AI Service: Provider [{$provider->name}] quota exhausted (429)");
+                Log::warning("AI Service: Provider [{$provider->name}] quota exhausted (429), akan failover ke provider berikutnya");
             }
 
             $errorMessage = substr($response->body(), 0, 300);
@@ -236,17 +246,22 @@ PROMPT;
      * Ambil provider AI terbaik yang tersedia (status healthy, masih ada kuota).
      *
      * Urutan seleksi berdasarkan kolom priority (ASC).
-     * Provider dilewati jika kuota harian atau bulanan sudah habis.
+     * Provider dilewati jika kuota harian atau bulanan sudah habis,
+     * atau jika ID provider ada dalam daftar skip (sudah pernah dicoba).
      *
+     * @param int|null $skipId Provider ID yang dilewati (sudah gagal sebelumnya)
      * @return AiProvider|null Provider yang siap digunakan, atau null jika semua habis/tidak sehat
      */
-    protected function getBestProvider(): ?AiProvider
+    protected function getBestProvider(?int $skipId = null): ?AiProvider
     {
         $providers = AiProvider::healthy()
             ->byPriority()
             ->get();
 
         foreach ($providers as $provider) {
+            if ($skipId !== null && $provider->id === $skipId) {
+                continue;
+            }
             if ($provider->daily_token_limit > 0 && $provider->tokens_used_today >= $provider->daily_token_limit) {
                 continue;
             }
