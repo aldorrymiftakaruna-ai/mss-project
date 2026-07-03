@@ -386,7 +386,7 @@ trait WizardStepHandlerTrait
 
     /**
      * Bangun prompt untuk menanyakan downtime.
-     * Input angka menit, seperti durasi pekerjaan.
+     * Input angka menit, atau pilih Tidak Ada lewat tombol.
      *
      * @param  array $state
      * @return array
@@ -396,10 +396,11 @@ trait WizardStepHandlerTrait
         return [
             'message'  => "*Step 9/11* — Downtime\n\n" .
                 "Apakah ada downtime (mesin berhenti) akibat pekerjaan ini?\n" .
-                "Ketik jumlah menit, atau *0* / *skip* jika tidak ada.\n\n" .
-                "Contoh: `30`, `120`, `0`",
+                "Ketik jumlah menit, atau pilih *Tidak Ada*.\n\n" .
+                "Contoh: `30`, `120`",
             'keyboard' => [
-                ['text' => 'Batalkan Laporan', 'callback_data' => 'wizard:cancel_wizard'],
+                ['text' => 'Tidak Ada Downtime', 'callback_data' => 'wizard:confirm:downtime_0'],
+                ['text' => 'Batalkan Laporan',   'callback_data' => 'wizard:cancel_wizard'],
             ],
         ];
     }
@@ -428,9 +429,10 @@ trait WizardStepHandlerTrait
 
         return [
             'message'  => "Masukkan angka menit downtime (contoh: `30`, `120`),\n" .
-                "atau ketik *0* jika tidak ada downtime.",
+                "atau pilih *Tidak Ada Downtime*.",
             'keyboard' => [
-                ['text' => 'Batalkan Laporan', 'callback_data' => 'wizard:cancel_wizard'],
+                ['text' => 'Tidak Ada Downtime', 'callback_data' => 'wizard:confirm:downtime_0'],
+                ['text' => 'Batalkan Laporan',   'callback_data' => 'wizard:cancel_wizard'],
             ],
         ];
     }
@@ -455,7 +457,7 @@ trait WizardStepHandlerTrait
 
     /**
      * Bangun prompt untuk menanyakan jam lembur.
-     * Input angka jam — 0 / skip berarti tidak lembur.
+     * Input angka jam, atau pilih Tidak Lembur lewat tombol.
      *
      * @param  array $state
      * @return array
@@ -464,11 +466,12 @@ trait WizardStepHandlerTrait
     {
         return [
             'message'  => "*Step 10/11* — Lembur\n\n" .
-                "Berapa jam lembur yang dilakukan?\n" .
-                "Ketik *0* atau *skip* jika tidak lembur.\n\n" .
-                "Contoh: `1`, `2.5`, `4`, `0`",
+                "Apakah ada lembur?\n" .
+                "Ketik jumlah jam, atau pilih *Tidak Lembur*.\n\n" .
+                "Contoh: `1`, `2.5`, `4`",
             'keyboard' => [
-                ['text' => 'Batalkan Laporan', 'callback_data' => 'wizard:cancel_wizard'],
+                ['text' => 'Tidak Lembur',       'callback_data' => 'wizard:confirm:overtime_0'],
+                ['text' => 'Batalkan Laporan',   'callback_data' => 'wizard:cancel_wizard'],
             ],
         ];
     }
@@ -500,10 +503,11 @@ trait WizardStepHandlerTrait
 
         return [
             'message'  => "Masukkan jam lembur (angka, maks 24 jam).\n" .
-                "Ketik *0* jika tidak lembur.\n\n" .
-                "Contoh: `1`, `2.5`, `4`, `0`",
+                "Ketik jumlah jam, atau pilih *Tidak Lembur*.\n\n" .
+                "Contoh: `1`, `2.5`, `4`",
             'keyboard' => [
-                ['text' => 'Batalkan Laporan', 'callback_data' => 'wizard:cancel_wizard'],
+                ['text' => 'Tidak Lembur',       'callback_data' => 'wizard:confirm:overtime_0'],
+                ['text' => 'Batalkan Laporan',   'callback_data' => 'wizard:cancel_wizard'],
             ],
         ];
     }
