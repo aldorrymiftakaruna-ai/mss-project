@@ -325,58 +325,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
             </svg>
         </div>
-        <h2 class="font-semibold text-gray-800">Analisis AI</h2>
-        @if($maintenance->ai_analyzed)
-        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-            Confidence: {{ $maintenance->ai_confidence ?? '—' }}%
-        </span>
-        @endif
-        @if(!empty($ai['needs_clarification']))
-        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-            Perlu Klarifikasi
-        </span>
-        @endif
-    </div>
-
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-        <div>
-            <p class="text-xs text-gray-400 mb-0.5">Tipe Laporan</p>
-            <p class="text-gray-800 capitalize">{{ str_replace('_', ' ', $ai['report_type'] ?? '—') }}</p>
-        </div>
-        <div>
-            <p class="text-xs text-gray-400 mb-0.5">Asset Terdeteksi</p>
-            <p class="text-gray-800">{{ $ai['detected_asset'] ?? '—' }}</p>
-        </div>
-        <div>
-            <p class="text-xs text-gray-400 mb-0.5">Durasi Terdeteksi</p>
-            <p class="text-gray-800">
-                @php $dur = $ai['parsed_duration_minutes'] ?? null; @endphp
-                {{ $dur ? $dur . ' menit' : '—' }}
-            </p>
-        </div>
-        <div>
-            <p class="text-xs text-gray-400 mb-0.5">Root Cause Terdeteksi</p>
-            <p class="text-gray-800">{{ $ai['parsed_root_cause'] ?? '—' }}</p>
-        </div>
-    </div>
-
-    @if(!empty($ai['message']))
-    <div class="mt-4 pt-4 border-t border-gray-100">
-        <p class="text-xs text-gray-400 mb-1">Pesan AI</p>
-        <p class="text-sm text-gray-700 italic">{{ $ai['message'] }}</p>
-    </div>
-    @endif
-
-    @if(!empty($ai['clarification_questions']))
-    <div class="mt-4 pt-4 border-t border-gray-100">
-        <p class="text-xs text-gray-400 mb-2">Pertanyaan Klarifikasi</p>
-        <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
-            @foreach($ai['clarification_questions'] as $q)
-            <li>{{ $q }}</li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
+        <h2 class="font-semibold text-gray-800">Analisis AI</h2></div>
 </div>
 @endif
 
