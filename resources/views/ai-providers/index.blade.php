@@ -247,10 +247,10 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <h3 class="font-medium text-gray-900">Log Pemakaian Terbaru</h3>
-            <span class="text-xs text-gray-400">30 entri terakhir</span>
+            <span class="text-xs text-gray-400" id="log-count-label">{{ min(count($recentLogs), 5) }}/{{ count($recentLogs) }} entri</span>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -264,9 +264,9 @@
                         <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Waktu</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-50">
-                    @forelse($recentLogs as $log)
-                        <tr class="hover:bg-gray-50 transition-colors">
+                <tbody id="log-table-body" class="divide-y divide-gray-50">
+                    @forelse($recentLogs as $i => $log)
+                        <tr class="hover:bg-gray-50 transition-colors {{ $i >= 5 ? 'hidden' : '' }}" data-log-index="{{ $i }}">
                             <td class="px-4 py-2.5 text-gray-600 text-xs">{{ $log->provider?->name ?? '-' }}</td>
                             <td class="px-4 py-2.5">
                                 @if($log->request_type)
@@ -287,10 +287,17 @@
                     @endforelse
                 </tbody>
             </table>
+            @if(count($recentLogs) > 5)
+            <div class="px-5 py-3 border-t border-gray-100 text-center">
+                <button onclick="toggleLogs()" id="btn-toggle-logs" class="text-sm text-[#0E9E8E] hover:text-[#0a7a6d] font-medium">
+                    Tampilkan Semua
+                </button>
+            </div>
+            @endif
         </div>
     </div>
 
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">/
+</div>
 
 </div>
 
@@ -591,6 +598,25 @@ function deleteProvider(id) {
 
     document.body.appendChild(form);
     form.submit();
+}
+
+function toggleLogs() {
+    const btn = document.getElementById('btn-toggle-logs');
+    const rows = document.querySelectorAll('#log-table-body tr[data-log-index]');
+    const label = document.getElementById('log-count-label');
+    const total = rows.length;
+    let showAll = btn.textContent.trim() === 'Tampilkan Semua';
+
+    rows.forEach(function(row, idx) {
+        if (showAll) {
+            row.classList.remove('hidden');
+        } else {
+            if (idx >= 5) row.classList.add('hidden');
+        }
+    });
+
+    btn.textContent = showAll ? 'Tampilkan Sedikit' : 'Tampilkan Semua';
+    label.textContent = (showAll ? total : Math.min(total, 5)) + '/' + total + ' entri';
 }
 </script>
 @endpush
