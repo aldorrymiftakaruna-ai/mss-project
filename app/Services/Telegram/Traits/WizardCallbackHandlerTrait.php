@@ -71,9 +71,22 @@ trait WizardCallbackHandlerTrait
             case $action === 'photo_doc_skip':
                 return $this->advanceFromPhotoStep($chatId, $state, 'documentation');
 
-            // Catatan / Feedback
+                        // Catatan / Feedback
             case $action === 'catatan_skip':
                 return $this->advanceFromCatatan($chatId, $state);
+
+            // Downtime
+            case str_starts_with($action, 'downtime_'):
+                $minutes = (int) str_replace('downtime_', '', $action);
+                $state['downtime_minutes'] = $minutes;
+                return $this->advanceToOvertime($chatId, $state);
+
+                        // Lembur (langsung jam, 0 = tidak lembur)
+            case str_starts_with($action, 'overtime_'):
+                $hours = (float) str_replace('overtime_', '', $action);
+                $state['is_overtime'] = $hours > 0;
+                $state['overtime_hours'] = $hours;
+                return $this->advanceFromOvertime($chatId, $state);
 
             // Simpan / Batal
             case $action === 'save_report':

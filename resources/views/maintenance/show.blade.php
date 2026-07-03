@@ -68,6 +68,20 @@
             <p class="text-xs text-gray-400 mb-0.5">Durasi Pekerjaan</p>
             <p class="text-gray-800">{{ $maintenance->work_duration_minutes ? $maintenance->work_duration_minutes . ' menit' : '—' }}</p>
         </div>
+        <div>
+            <p class="text-xs text-gray-400 mb-0.5">Downtime</p>
+            <p class="text-gray-800">{{ $maintenance->downtime_minutes ? $maintenance->downtime_minutes . ' menit' : '—' }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-400 mb-0.5">Lembur</p>
+            <p class="text-gray-800">
+                @if($maintenance->is_overtime)
+                    Ya — {{ $maintenance->overtime_hours ?? '?' }} jam
+                @else
+                    Tidak
+                @endif
+            </p>
+        </div>
     </div>
 </div>
 
@@ -145,6 +159,74 @@
         @else
         <p class="text-sm text-gray-400">Tidak ada foto.</p>
         @endif
+    </div>
+</div>
+
+{{-- Downtime & Lembur (Edit) --}}
+<div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-gray-800">Data Downtime &amp; Lembur</h2>
+        <button onclick="document.getElementById('modal-metrics').classList.remove('hidden')"
+            class="text-sm text-[#0E9E8E] hover:underline">Edit</button>
+    </div>
+    <div class="grid grid-cols-2 gap-6 text-sm">
+        <div>
+            <p class="text-xs text-gray-400 mb-0.5">Downtime</p>
+            <p class="text-gray-800">{{ $maintenance->downtime_minutes ? $maintenance->downtime_minutes . ' menit' : '—' }}</p>
+        </div>
+        <div>
+            <p class="text-xs text-gray-400 mb-0.5">Lembur</p>
+            <p class="text-gray-800">
+                @if($maintenance->is_overtime)
+                    Ya — {{ $maintenance->overtime_hours ?? '?' }} jam
+                @else
+                    Tidak lembur
+                @endif
+            </p>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Edit Downtime & Lembur --}}
+<div id="modal-metrics" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl w-full max-w-md p-6">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="font-semibold text-gray-800">Edit Downtime &amp; Lembur</h3>
+            <button onclick="document.getElementById('modal-metrics').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">&times;</button>
+        </div>
+        <form action="{{ route('maintenance.metrics.update', $maintenance) }}" method="POST" class="space-y-4">
+            @csrf @method('PUT')
+            <div>
+                <label class="text-xs text-gray-500 mb-1 block">Downtime (menit)</label>
+                <input type="number" name="downtime_minutes" min="0" placeholder="30"
+                    value="{{ $maintenance->downtime_minutes }}"
+                    class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="text-xs text-gray-500 mb-1 block">Lembur?</label>
+                <select name="is_overtime" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                    onchange="document.getElementById('modal-overtime-hours').classList.toggle('hidden', this.value !== '1')">
+                    <option value="0" {{ $maintenance->is_overtime ? '' : 'selected' }}>Tidak</option>
+                    <option value="1" {{ $maintenance->is_overtime ? 'selected' : '' }}>Ya</option>
+                </select>
+            </div>
+            <div id="modal-overtime-hours" class="{{ $maintenance->is_overtime ? '' : 'hidden' }}">
+                <label class="text-xs text-gray-500 mb-1 block">Jam Lembur</label>
+                <input type="number" name="overtime_hours" min="0" max="24" step="0.5" placeholder="2.5"
+                    value="{{ $maintenance->overtime_hours }}"
+                    class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="submit"
+                    class="flex-1 bg-[#0E9E8E] text-white py-2 rounded-lg text-sm hover:bg-[#0a7a6d] transition">
+                    Simpan
+                </button>
+                <button type="button" onclick="document.getElementById('modal-metrics').classList.add('hidden')"
+                    class="flex-1 border border-gray-200 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+                    Batal
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 

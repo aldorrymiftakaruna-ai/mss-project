@@ -130,8 +130,11 @@
         {{-- Statistik Ringkas --}}
         @php
             $reports = $employee->maintenanceReports ?? collect();
+            $totalDowntime = $reports->sum('downtime_minutes');
+            $totalLembur = $reports->where('is_overtime', true)->sum('overtime_hours');
+            $totalLaporanLembur = $reports->where('is_overtime', true)->count();
         @endphp
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-6 gap-4">
             <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
                 <div class="text-2xl font-bold text-[#0E9E8E]">{{ $reports->count() }}</div>
                 <div class="text-xs text-gray-400 mt-1">Total Pekerjaan</div>
@@ -153,6 +156,18 @@
                     {{ $reports->sum('work_duration_minutes') }} mnt
                 </div>
                 <div class="text-xs text-gray-400 mt-1">Total Durasi</div>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div class="text-2xl font-bold text-orange-600">
+                    {{ $totalDowntime > 0 ? round($totalDowntime / 60, 1) . ' j' : '—' }}
+                </div>
+                <div class="text-xs text-gray-400 mt-1">Total Downtime</div>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div class="text-2xl font-bold text-purple-600">
+                    {{ $totalLembur > 0 ? $totalLembur . ' j' : '—' }}
+                </div>
+                <div class="text-xs text-gray-400 mt-1">Lembur ({{ $totalLaporanLembur }} lp)</div>
             </div>
         </div>
 
@@ -192,6 +207,12 @@
                                     <span class="capitalize">Shift {{ $report->shift }}</span>
                                     @if($report->work_duration_minutes)
                                         <span>{{ $report->work_duration_minutes }} mnt</span>
+                                    @endif
+                                    @if($report->downtime_minutes)
+                                        <span class="text-orange-500">down {{ $report->downtime_minutes }} mnt</span>
+                                    @endif
+                                    @if($report->is_overtime)
+                                        <span class="text-purple-500">lembur {{ $report->overtime_hours ?? '?' }} j</span>
                                     @endif
                                 </div>
                             </div>

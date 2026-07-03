@@ -53,6 +53,7 @@ trait WizardNewStepsTrait
                 ['text' => 'Shift 2 (16-24)', 'callback_data' => 'wizard:confirm:shift_2'],
                 ['text' => 'Shift 3 (00-08)', 'callback_data' => 'wizard:confirm:shift_3'],
                 ['text' => 'Shift Reguler',   'callback_data' => 'wizard:confirm:shift_reguler'],
+                ['text' => 'Batalkan Laporan', 'callback_data' => 'wizard:cancel_wizard'],
             ],
         ];
     }
@@ -123,6 +124,7 @@ trait WizardNewStepsTrait
             'keyboard' => [
                 ['text' => 'Corrective',  'callback_data' => 'wizard:confirm:type_corrective'],
                 ['text' => 'Preventive',  'callback_data' => 'wizard:confirm:type_preventive'],
+                ['text' => 'Batalkan Laporan', 'callback_data' => 'wizard:cancel_wizard'],
             ],
         ];
     }
@@ -188,6 +190,7 @@ trait WizardNewStepsTrait
             'keyboard' => [
                 ['text' => 'Pekerjaan Selesai',      'callback_data' => 'wizard:confirm:status_selesai'],
                 ['text' => 'Belum Selesai',          'callback_data' => 'wizard:confirm:status_belum_selesai'],
+                ['text' => 'Batalkan Laporan',       'callback_data' => 'wizard:cancel_wizard'],
             ],
         ];
     }

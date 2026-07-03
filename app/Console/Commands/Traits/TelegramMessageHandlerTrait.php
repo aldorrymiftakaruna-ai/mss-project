@@ -95,6 +95,9 @@ trait TelegramMessageHandlerTrait
                 \App\Services\Telegram\ReportWizardService::STEP_WORK_DURATION,
                 \App\Services\Telegram\ReportWizardService::STEP_ROOT_CAUSE,
                 \App\Services\Telegram\ReportWizardService::STEP_PHOTO_DOCUMENTATION,
+                \App\Services\Telegram\ReportWizardService::STEP_CATATAN,
+                \App\Services\Telegram\ReportWizardService::STEP_DOWNTIME,
+                \App\Services\Telegram\ReportWizardService::STEP_OVERTIME,
                 \App\Services\Telegram\ReportWizardService::STEP_CONFIRMATION,
                 \App\Services\Telegram\ReportWizardService::STEP_DONE,
             ]);

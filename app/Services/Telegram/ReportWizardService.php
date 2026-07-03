@@ -33,6 +33,8 @@ class ReportWizardService
     const STEP_ROOT_CAUSE = 'root_cause';
     const STEP_PHOTO_DOCUMENTATION = 'photo_documentation';
     const STEP_CATATAN = 'catatan';
+    const STEP_DOWNTIME = 'downtime';
+        const STEP_OVERTIME = 'overtime';
     const STEP_CONFIRMATION = 'confirmation';
     const STEP_DONE = 'done';
 
@@ -95,8 +97,12 @@ class ReportWizardService
                 return $this->handleRootCauseInput($chatId, $text, $state);
                         case self::STEP_PHOTO_DOCUMENTATION:
                 return $this->handlePhotoCommand($chatId, $text, $state, 'documentation');
-            case self::STEP_CATATAN:
+                        case self::STEP_CATATAN:
                 return $this->handleCatatanInput($chatId, $text, $state);
+            case self::STEP_DOWNTIME:
+                return $this->handleDowntimeInput($chatId, $text, $state);
+            case self::STEP_OVERTIME:
+                return $this->handleOvertimeInput($chatId, $text, $state);
             case self::STEP_CONFIRMATION:
                 return $this->handleConfirmation($chatId, $text, $state);
             default:

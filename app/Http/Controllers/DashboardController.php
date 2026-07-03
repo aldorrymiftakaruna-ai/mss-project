@@ -19,7 +19,7 @@ class DashboardController extends Controller
      *
      * Menyajikan ringkasan deskriptif (KPI, chart 7-hari),
      * prediktif (Top 5 equipment sering rusak, CM alert),
-     * dan preskriptif (rekomendasi DSS).
+     * dan insight KPI (equipment danger, sparepart kritis, downtime vs KPI, lembur vs KPI).
      */
     public function index()
     {
@@ -38,6 +38,19 @@ class DashboardController extends Controller
         $totalKaryawanAktif   = $durasiKerja['total_karyawan'];
         $totalLaporanMinggu   = $durasiKerja['total_laporan'];
 
+        // Downtime & Lembur ringkasan
+        $totalDowntimeBulanIni = (int) MaintenanceReport::whereMonth('created_at', now()->month)
+            ->whereNotNull('downtime_minutes')
+            ->sum('downtime_minutes');
+
+        $totalLemburBulanIni = (float) MaintenanceReport::whereMonth('created_at', now()->month)
+            ->where('is_overtime', true)
+            ->sum('overtime_hours');
+
+        $totalLaporanLemburBulanIni = MaintenanceReport::whereMonth('created_at', now()->month)
+            ->where('is_overtime', true)
+            ->count();
+
         // ──────────────────────────────────────────────
         // 2. Mini Chart — Laporan 7 hari terakhir
         // ──────────────────────────────────────────────
@@ -54,13 +67,12 @@ class DashboardController extends Controller
         $cmAlerts = $this->cmAlertsTerbaru();
 
         // ──────────────────────────────────────────────
-        // 5. Rekomendasi DSS
+        // 5. Insight KPI — menggantikan rekomendasi DSS
         // ──────────────────────────────────────────────
-        $rekomendasi = $this->generateRekomendasi(
-              $equipmentDanger,
-              $stokKritis,
-              $durasiKerja
-          );
+        $kpiDowntime   = $this->kpiInsightDowntime($totalDowntimeBulanIni);
+        $kpiLembur     = $this->kpiInsightLembur($totalLemburBulanIni);
+        $equipmentDangerList = Asset::where('status', 'danger')->take(5)->get(['id', 'tag_no', 'description', 'status']);
+        $sparepartKritisList = SparePart::whereColumn('stok_tersedia', '<', 'stok_minimum')->take(5)->get();
 
         return view('dashboard', compact(
             'totalAssets',
@@ -71,10 +83,16 @@ class DashboardController extends Controller
             'totalJamMingguIni',
             'totalKaryawanAktif',
             'totalLaporanMinggu',
+            'totalDowntimeBulanIni',
+            'totalLemburBulanIni',
+            'totalLaporanLemburBulanIni',
             'chart7Hari',
             'topEquipmentRusak',
             'cmAlerts',
-            'rekomendasi',
+            'equipmentDangerList',
+            'sparepartKritisList',
+            'kpiDowntime',
+            'kpiLembur',
         ));
     }
 
@@ -157,139 +175,70 @@ class DashboardController extends Controller
     }
 
     /**
-     * Generate rekomendasi DSS berdasarkan data terkini.
+     * Insight KPI downtime terhadap batas KPI (default 20 jam/bulan = 1200 menit).
      *
-     * @param int   $equipmentDanger
-     * @param int   $stokKritis
-     * @param array $efektif
-     * @return array
+     * @param int $totalDowntimeMenit
+     * @return array ['total_jam' => float, 'kpi_jam' => int, 'sisa_jam' => float, 'persen' => float, 'status' => string, 'pesan' => string]
      */
-    private function generateRekomendasi(int $equipmentDanger, int $stokKritis, array $durasiKerja): array
+    private function kpiInsightDowntime(int $totalDowntimeMenit): array
     {
-        $rekomendasi = [];
+        $kpiMenit = 1200; // 20 jam
+        $totalJam = round($totalDowntimeMenit / 60, 1);
+        $kpiJam   = $kpiMenit / 60;
+        $sisaJam  = round(max($kpiJam - $totalJam, 0), 1);
+        $persen   = $kpiJam > 0 ? round(($totalJam / $kpiJam) * 100, 1) : 0;
 
-        // 1. Equipment danger
-        if ($equipmentDanger > 0) {
-            $rekomendasi[] = [
-                'level' => 'high',
-                'title' => "{$equipmentDanger} equipment berstatus danger",
-                'desc'  => 'Butuh tindakan corrective segera. Cek hasil CM terbaru untuk memastikan akar masalah.',
-            ];
+        if ($totalJam >= $kpiJam) {
+            $status = 'danger';
+            $pesan  = "Downtime sudah melewati batas KPI ({$kpiJam} jam)! Saat ini {$totalJam} jam.";
+        } elseif ($persen >= 80) {
+            $status = 'warning';
+            $pesan  = "Downtime {$totalJam} jam — sisa {$sisaJam} jam lagi mencapai KPI ({$kpiJam} jam). Waspada.";
+        } else {
+            $status = 'safe';
+            $pesan  = "Downtime {$totalJam} jam dari KPI {$kpiJam} jam. Sisa kuota {$sisaJam} jam. Masih aman.";
         }
 
-        // 2. Kenaikan tren vibrasi/temperature
-        $totalCmHigh = CmFinding::whereIn('severity', ['high', 'critical'])
-            ->where('status', '!=', 'closed')
-            ->count();
-
-        if ($totalCmHigh > 0) {
-            $rekomendasi[] = [
-                'level' => $totalCmHigh > 3 ? 'high' : 'med',
-                'title' => "{$totalCmHigh} temuan CM severity tinggi",
-                'desc'  => 'Indikasi kenaikan vibrasi/temperatur. Percepat jadwal corrective maintenance.',
-            ];
-        }
-
-        // 3. Stok sparepart kritis
-        if ($stokKritis > 0) {
-            $rekomendasi[] = [
-                'level' => 'med',
-                'title' => "{$stokKritis} sparepart stok kritis",
-                'desc'  => 'Stok di bawah minimum. Segera reorder. Tinjau apakah perlu adjustment minimum stok.',
-            ];
-        }
-
-        // 4. Total jam kerja minggu ini
-        if ($durasiKerja['total_laporan'] > 0 && $durasiKerja['total_jam'] < 10 && $durasiKerja['total_karyawan'] > 0) {
-            $rekomendasi[] = [
-                'level' => 'med',
-                'title' => "Total {$durasiKerja['total_jam']} jam kerja minggu ini — rendah",
-                'desc'  => "{$durasiKerja['total_laporan']} laporan dari {$durasiKerja['total_karyawan']} karyawan. Pastikan reporting berjalan optimal.",
-            ];
-        } elseif ($durasiKerja['total_jam'] > 80 && $durasiKerja['total_karyawan'] > 0) {
-            $rekomendasi[] = [
-                'level' => 'low',
-                'title' => "Total {$durasiKerja['total_jam']} jam kerja minggu ini — padat",
-                'desc'  => 'Aktivitas maintenance tinggi. Pastikan tidak ada overloading pada teknisi.',
-            ];
-        }
-
-        // 5. Equipment sering rusak → RCA
-        $topRusak = $this->topEquipmentRusakBulanIni();
-        if ($topRusak->isNotEmpty()) {
-            $most = $topRusak->first();
-            if ($most->total >= 3) {
-                $rekomendasi[] = [
-                    'level' => 'med',
-                    'title' => "{$most->asset->tag_no} — {$most->total}x rusak bulan ini",
-                    'desc'  => 'Frekuensi tinggi. Perlu Root Cause Analysis (RCA) untuk mencegah recurring failure.',
-                ];
-            }
-        }
-
-        // 6. Rekomendasi minimum stok sparepart
-        $this->rekomendasiMinimumStok($rekomendasi, $stokKritis);
-
-        // 7. UCL/LCL durasi pekerjaan
-        $this->rekomendasiUclLcl($rekomendasi);
-
-        return $rekomendasi;
+        return [
+            'total_jam'  => $totalJam,
+            'kpi_jam'    => $kpiJam,
+            'sisa_jam'   => $sisaJam,
+            'persen'     => $persen,
+            'status'     => $status,
+            'pesan'      => $pesan,
+        ];
     }
 
     /**
-     * Rekomendasi penyesuaian minimum stok berdasarkan riwayat pemakaian.
+     * Insight KPI lembur terhadap batas KPI (default 40 jam/bulan).
      *
-     * @param array &$rekomendasi
-     * @param int   $stokKritis
+     * @param float $totalLemburJam
+     * @return array ['total_jam' => float, 'kpi_jam' => int, 'sisa_jam' => float, 'persen' => float, 'status' => string, 'pesan' => string]
      */
-    private function rekomendasiMinimumStok(array &$rekomendasi, int $stokKritis): void
+    private function kpiInsightLembur(float $totalLemburJam): array
     {
-        if ($stokKritis < 1) {
-            return;
+        $kpiJam  = 40;
+        $sisaJam = round(max($kpiJam - $totalLemburJam, 0), 1);
+        $persen  = $kpiJam > 0 ? round(($totalLemburJam / $kpiJam) * 100, 1) : 0;
+
+        if ($totalLemburJam >= $kpiJam) {
+            $status = 'danger';
+            $pesan  = "Lembur sudah melebihi batas KPI ({$kpiJam} jam)! Saat ini {$totalLemburJam} jam.";
+        } elseif ($persen >= 80) {
+            $status = 'warning';
+            $pesan  = "Lembur {$totalLemburJam} jam — sisa {$sisaJam} jam lagi mencapai KPI. Evaluasi beban kerja.";
+        } else {
+            $status = 'safe';
+            $pesan  = "Lembur {$totalLemburJam} jam dari KPI {$kpiJam} jam. Sisa kuota {$sisaJam} jam. Normal.";
         }
 
-        $seringKritis = SparePart::whereColumn('stok_tersedia', '<', 'stok_minimum')
-            ->where('stok_minimum', '>', 0)
-            ->get();
-
-        foreach ($seringKritis as $sp) {
-            $rasio = $sp->stok_minimum > 0
-                ? round($sp->stok_tersedia / $sp->stok_minimum, 2)
-                : 0;
-
-            if ($rasio < 0.3) {
-                $rekomendasi[] = [
-                    'level' => 'low',
-                    'title' => "Adjust min stok: {$sp->kode_material}",
-                    'desc'  => "Stok {$sp->stok_tersedia}/{$sp->stok_minimum}. Riwayat menunjukkan sering kritis — pertimbangkan naikkan minimum stok.",
-                ];
-                break;
-            }
-        }
-    }
-
-    /**
-     * Analisis UCL/LCL durasi pekerjaan sejenis.
-     *
-     * @param array &$rekomendasi
-     */
-    private function rekomendasiUclLcl(array &$rekomendasi): void
-    {
-        $jenisPekerjaan = MaintenanceReport::select('jenis', DB::raw('COUNT(*) as total'))
-            ->whereNotNull('work_duration_minutes')
-            ->where('work_duration_minutes', '>', 0)
-            ->groupBy('jenis')
-            ->having('total', '>=', 5)
-            ->pluck('total', 'jenis');
-
-        if ($jenisPekerjaan->isEmpty()) {
-            return;
-        }
-
-        $rekomendasi[] = [
-            'level' => 'low',
-            'title' => 'Analisis UCL/LCL tersedia',
-            'desc'  => 'Data maintenance sudah mencukupi untuk analisis batas durasi kerja. Buka halaman DSS untuk detail.',
+        return [
+            'total_jam' => $totalLemburJam,
+            'kpi_jam'   => $kpiJam,
+            'sisa_jam'  => $sisaJam,
+            'persen'    => $persen,
+            'status'    => $status,
+            'pesan'     => $pesan,
         ];
     }
 }

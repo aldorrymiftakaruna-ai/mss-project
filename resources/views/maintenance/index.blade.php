@@ -2,7 +2,7 @@
 
 @section('title', 'Laporan Maintenance')
 @section('page-title', 'Laporan Maintenance')
-@section('page-sub', '— Riwayat corrective & inspeksi')
+@section('page-sub', 'â€” Riwayat corrective & inspeksi')
 
 @section('content')
 
@@ -58,7 +58,7 @@
                 </td>
                 <td class="px-5 py-3 text-gray-500">Shift {{ $report->shift }}</td>
                 <td class="px-5 py-3 capitalize text-gray-600">{{ $report->jenis }}</td>
-                <td class="px-5 py-3 text-gray-600">{{ $report->reporter->name ?? '—' }}</td>
+                <td class="px-5 py-3 text-gray-600">{{ $report->reporter->name ?? 'â€”' }}</td>
                                 <td class="px-5 py-3">
                     @php
                         $colors = ['belum_selesai'=>'bg-red-100 text-red-700','selesai'=>'bg-green-100 text-green-700'];
@@ -70,7 +70,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="7" class="px-5 py-10 text-center text-gray-400">Belum ada laporan maintenance.</td>
+                <td colspan="9" class="px-5 py-10 text-center text-gray-400">Belum ada laporan maintenance.</td>
             </tr>
             @endforelse
         </tbody>
@@ -82,7 +82,7 @@
     <div class="bg-white rounded-xl w-full max-w-lg p-6">
         <div class="flex items-center justify-between mb-5">
             <h3 class="font-semibold text-gray-800">Tambah Laporan Maintenance</h3>
-            <button onclick="document.getElementById('modal-add').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
+            <button onclick="document.getElementById('modal-add').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">âœ•</button>
         </div>
         <form action="{{ route('maintenance.store') }}" method="POST" class="space-y-4">
             @csrf
@@ -93,7 +93,7 @@
                         <option value="">Pilih Equipment</option>
                         @foreach($assets as $asset)
 
-                        <option value="{{ $asset->id }}">{{ $asset->tag_no }} — {{ $asset->description }}</option>
+                        <option value="{{ $asset->id }}">{{ $asset->tag_no }} â€” {{ $asset->description }}</option>
                         @endforeach
                     </select>
                 </div>

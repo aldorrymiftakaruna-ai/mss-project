@@ -33,6 +33,9 @@ class MaintenanceController extends Controller
             'tanggal' => 'required|date',
             'jenis' => 'required',
             'deskripsi_masalah' => 'required',
+            'downtime_minutes' => 'nullable|integer|min:0',
+            'is_overtime' => 'nullable|boolean',
+            'overtime_hours' => 'nullable|numeric|min:0|max:24',
         ]);
 
         $report = MaintenanceReport::create($request->all());
@@ -72,5 +75,28 @@ class MaintenanceController extends Controller
         return redirect()->route('maintenance.show', $maintenance)
                          ->with('success', 'Teknisi berhasil ditambahkan ke laporan.');
     }
-}
+    /**
+     * Update downtime & overtime metrics untuk suatu laporan.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\MaintenanceReport  $maintenance
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateMetrics(Request $request, MaintenanceReport $maintenance)
+    {
+        $request->validate([
+            'downtime_minutes' => 'nullable|integer|min:0',
+            'is_overtime' => 'nullable|boolean',
+            'overtime_hours' => 'nullable|numeric|min:0|max:24',
+        ]);
 
+        $maintenance->update([
+            'downtime_minutes' => $request->downtime_minutes,
+            'is_overtime'      => $request->boolean('is_overtime'),
+            'overtime_hours'   => $request->is_overtime ? $request->overtime_hours : null,
+        ]);
+
+        return redirect()->route('maintenance.show', $maintenance)
+                         ->with('success', 'Data downtime & lembur berhasil diperbarui.');
+    }
+}

@@ -63,8 +63,12 @@ trait WizardReportSaverTrait
         $typeLabel      = $this->reportTypeLabel($state);
         $statusLabel    = ($state['status'] ?? 'belum_selesai') === 'selesai' ? 'Selesai' : 'Belum Selesai';
         $catatan        = $state['catatan'] ?? '-';
+        $downtime       = ($state['downtime_minutes'] ?? 0) > 0 ? $state['downtime_minutes'] . ' mnt' : 'Tidak ada';
+        $overtime       = !empty($state['is_overtime']) && !empty($state['overtime_hours'])
+            ? 'Ya — ' . $state['overtime_hours'] . ' jam'
+            : 'Tidak';
 
-        $msg  = "*Step 9/9* — Konfirmasi Laporan\n\n";
+        $msg  = "*Step 11/11* — Konfirmasi Laporan\n\n";
         $msg .= "Periksa ringkasan berikut sebelum disimpan:\n\n";
         $msg .= "*Equipment*   : {$equipmentLabel}\n";
         $msg .= "*Shift*       : {$shift}\n";
@@ -73,7 +77,9 @@ trait WizardReportSaverTrait
         $msg .= "*Durasi*      : {$duration}\n";
         $msg .= "*Root Cause*  : {$rootCause}\n";
         $msg .= "*Foto*        : {$photoDocCount} foto\n";
-        $msg .= "*Catatan*     : {$catatan}\n\n";
+        $msg .= "*Catatan*     : {$catatan}\n";
+        $msg .= "*Downtime*    : {$downtime}\n";
+        $msg .= "*Lembur*      : {$overtime}\n\n";
         $msg .= "Simpan laporan ini?";
 
         return [
@@ -143,6 +149,9 @@ trait WizardReportSaverTrait
                 'deskripsi_masalah'     => $state['text'],
                 'tindakan'              => $state['root_cause'] ?? null,
                 'work_duration_minutes' => $state['work_duration_minutes'] ?? null,
+                'downtime_minutes'      => ($state['downtime_minutes'] ?? 0) > 0 ? (int) $state['downtime_minutes'] : null,
+                'is_overtime'           => !empty($state['is_overtime']),
+                'overtime_hours'        => !empty($state['is_overtime']) && !empty($state['overtime_hours']) ? (float) $state['overtime_hours'] : null,
                 'root_cause'            => $state['root_cause'] ?? null,
                 'photo_documentation'   => $photoDocumentation,
                 'wizard_started_at'     => $state['created_at'] ?? null,
@@ -173,12 +182,17 @@ trait WizardReportSaverTrait
             $duration       = $this->formatDuration($state['work_duration_minutes'] ?? 0);
             $typeLabel      = $this->reportTypeLabel($state);
             $statusLabel    = ($state['status'] ?? 'belum_selesai') === 'selesai' ? 'Selesai' : 'Belum Selesai';
+            $downtimeText   = ($state['downtime_minutes'] ?? 0) > 0 ? $state['downtime_minutes'] . ' menit' : 'Tidak ada';
+            $overtimeText   = !empty($state['is_overtime']) && !empty($state['overtime_hours'])
+                ? $state['overtime_hours'] . ' jam' : 'Tidak';
 
             $msg  = "*Laporan Berhasil Disimpan!*\n\n";
             $msg .= "Kode Laporan: `{$reportCode}`\n";
             $msg .= "Equipment: {$equipmentLabel}\n";
             $msg .= "Jenis: {$typeLabel} | Status: {$statusLabel}\n";
-            $msg .= "Durasi: {$duration}\n\n";
+            $msg .= "Durasi: {$duration}\n";
+            $msg .= "Downtime: {$downtimeText}\n";
+            $msg .= "Lembur: {$overtimeText}\n\n";
             $msg .= "Terima kasih, laporan sudah masuk ke sistem.";
 
             return [

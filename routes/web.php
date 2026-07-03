@@ -17,7 +17,7 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-// Telegram webhook — tanpa auth, dipanggil langsung oleh server Telegram
+// Telegram webhook â€” tanpa auth, dipanggil langsung oleh server Telegram
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])
     ->name('telegram.webhook');
 
@@ -34,6 +34,7 @@ Route::middleware('admin')->group(function () {
     Route::resource('assets', AssetController::class);
     Route::resource('maintenance', MaintenanceController::class);
     Route::post('/maintenance/{maintenance}/manpower', [MaintenanceController::class, 'addManpower'])->name('maintenance.manpower.store');
+    Route::put('/maintenance/{maintenance}/metrics', [MaintenanceController::class, 'updateMetrics'])->name('maintenance.metrics.update');
 
 
     Route::get('/cm/template', [CmController::class, 'downloadTemplate'])->name('cm.template');
@@ -64,13 +65,13 @@ Route::middleware('admin')->group(function () {
     // AI Providers
     Route::get('/ai-providers', [AiProviderController::class, 'index'])->name('ai-providers.index');
     Route::post('/ai-providers', [AiProviderController::class, 'store'])->name('ai-providers.store');
-    // Static action routes — WAJIB sebelum {aiProvider} wildcard
+    // Static action routes â€” WAJIB sebelum {aiProvider} wildcard
     Route::post('/ai-providers/test-all', [AiProviderController::class, 'testAll'])->name('ai-providers.test-all');
     Route::post('/ai-providers/reset-quota', [AiProviderController::class, 'resetQuota'])->name('ai-providers.reset-quota');
     // Route alias
     Route::post('/ai-providers/aliases/{alias}/confirm', [AiProviderController::class, 'confirmAlias'])->name('ai-providers.aliases.confirm');
     Route::post('/ai-providers/aliases/{alias}/reject', [AiProviderController::class, 'rejectAlias'])->name('ai-providers.aliases.reject');
-    // Wildcard provider routes — setelah static routes
+    // Wildcard provider routes â€” setelah static routes
     Route::put('/ai-providers/{aiProvider}', [AiProviderController::class, 'update'])->name('ai-providers.update');
     Route::delete('/ai-providers/{aiProvider}', [AiProviderController::class, 'destroy'])->name('ai-providers.destroy');
     Route::post('/ai-providers/{aiProvider}/test', [AiProviderController::class, 'test'])->name('ai-providers.test');
@@ -88,3 +89,4 @@ Route::middleware('admin')->group(function () {
     Route::get('/bot/polling/status', [BotController::class, 'pollingStatus'])->name('bot.polling-status');
 
 });
+

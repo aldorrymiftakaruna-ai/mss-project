@@ -17,6 +17,7 @@ class MaintenanceReport extends Model
         'tindakan',
         'report_code',
         'work_duration_minutes',
+        'downtime_minutes',
         'root_cause',
         'photo_documentation',
         'wizard_started_at',
@@ -25,6 +26,8 @@ class MaintenanceReport extends Model
         'status',
         'foto_path',
         'catatan',
+        'is_overtime',
+        'overtime_hours',
     ];
 
     protected $casts = [
@@ -34,6 +37,9 @@ class MaintenanceReport extends Model
         'wizard_started_at' => 'datetime',
         'submitted_at' => 'datetime',
         'work_duration_minutes' => 'integer',
+        'downtime_minutes' => 'integer',
+        'is_overtime' => 'boolean',
+        'overtime_hours' => 'decimal:1',
     ];
 
     public function asset()
@@ -80,3 +86,7 @@ class MaintenanceReport extends Model
         return $urls;
     }
 }
+
+
+
+
