@@ -290,67 +290,7 @@
         </div>
     </div>
 
-    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 class="font-medium text-gray-900">Alias yang Dipelajari</h3>
-            <span class="text-xs text-gray-400">50 terbaru</span>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="bg-gray-50 border-b border-gray-100">
-                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Alias</th>
-                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Mapping</th>
-                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Status</th>
-                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                    @forelse($aliases as $alias)
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-5 py-3 font-mono text-sm text-gray-900">{{ $alias->alias_text }}</td>
-                            <td class="px-5 py-3 text-xs text-gray-600">
-                                @if($alias->asset)
-                                    {{ $alias->asset->tag_no }} - {{ $alias->asset->description }}
-                                @elseif($alias->employee)
-                                    {{ $alias->employee->name }}
-                                @else
-                                    -
-                                @endif
-                            </td>
-                            <td class="px-5 py-3"><x-status-badge :status="$alias->status" /></td>
-                            <td class="px-5 py-3">
-                                @if($alias->status === 'pending')
-                                    <div class="flex gap-2">
-                                        <form method="POST" action="{{ route('ai-providers.aliases.confirm', $alias) }}" class="inline">
-                                            @csrf
-                                            <button type="submit" class="text-green-600 hover:text-green-700 text-xs font-medium" onclick="return confirm('Konfirmasi alias ini?')">
-                                                Konfirmasi
-                                            </button>
-                                        </form>
-                                        <form method="POST" action="{{ route('ai-providers.aliases.reject', $alias) }}" class="inline">
-                                            @csrf
-                                            <button type="submit" class="text-red-600 hover:text-red-700 text-xs font-medium" onclick="return confirm('Tolak alias ini?')">
-                                                Tolak
-                                            </button>
-                                        </form>
-                                    </div>
-                                @else
-                                    <span class="text-xs text-gray-400">
-                                        {{ $alias->status === 'confirmed' ? 'Dikonfirmasi' : 'Ditolak' }}
-                                    </span>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="px-5 py-8 text-center text-gray-400 text-sm">Belum ada alias.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">/
 
 </div>
 
