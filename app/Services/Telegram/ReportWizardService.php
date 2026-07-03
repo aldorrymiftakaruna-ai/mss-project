@@ -400,7 +400,7 @@ class ReportWizardService
      * @param  string $text
      * @return array  Array of keyword string
      */
-    protected function extractKeywords(string $text): array
+        protected function extractKeywords(string $text): array
     {
         $stopWords = ['yang', 'dan', 'di', 'ke', 'dari', 'ini', 'itu', 'ada',
                       'tidak', 'sudah', 'belum', 'akan', 'dengan', 'untuk',
@@ -408,7 +408,13 @@ class ReportWizardService
                       'juga', 'dapat', 'bisa', 'harus', 'setelah', 'sebelum'];
 
         $words = preg_split('/[\s,\.\!\?]+/', strtolower($text), -1, PREG_SPLIT_NO_EMPTY);
-        $words = array_filter($words, fn($w) => strlen($w) >= 3 && !in_array($w, $stopWords));
+        $words = array_filter($words, function ($w) use ($stopWords) {
+            // Kata pendek (< 3 karakter) tetap diambil jika kombinasi huruf+angka (kode asset)
+            if (strlen($w) < 3) {
+                return preg_match('/[a-z]/i', $w) && preg_match('/\d/', $w);
+            }
+            return !in_array($w, $stopWords);
+        });
 
         return array_values($words);
     }
