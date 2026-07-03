@@ -39,10 +39,14 @@
         <tbody class="divide-y divide-gray-50">
             @forelse($employees as $employee)
             <tr class="hover:bg-gray-50">
-                <td class="px-5 py-3 font-medium text-gray-800">{{ $employee->name }}</td>
+                <td class="px-5 py-3 font-medium">
+                    <a href="{{ route('employees.show', $employee) }}" class="text-[#0E9E8E] hover:underline">
+                        {{ $employee->name }}
+                    </a>
+                </td>
                 <td class="px-5 py-3 capitalize text-gray-600">{{ $employee->role }}</td>
-                <td class="px-5 py-3 text-gray-500">
-                    {{ $employee->shift ? 'Shift '.$employee->shift : '—' }}
+                                <td class="px-5 py-3 text-gray-500 capitalize">
+                    {{ $employee->shift ?? '—' }}
                 </td>
                 <td class="px-5 py-3 text-gray-500">
                     @if($employee->telegram_username)
@@ -68,7 +72,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="6" class="px-5 py-10 text-center text-gray-400">Belum ada data karyawan.</td>
+                <td colspan="7" class="px-5 py-10 text-center text-gray-400">Belum ada data karyawan.</td>
             </tr>
             @endforelse
         </tbody>
@@ -82,13 +86,13 @@
             <h3 class="font-semibold text-gray-800">Tambah Karyawan</h3>
             <button onclick="document.getElementById('modal-add').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
-        <form action="{{ route('employees.store') }}" method="POST" class="space-y-4">
-            @csrf
-            <div>
-                <label class="text-xs text-gray-500 mb-1 block">Nama *</label>
-                <input type="text" name="name" required placeholder="Nama lengkap"
-                    class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-            </div>
+                <form action="{{ route('employees.store') }}" method="POST" class="space-y-4">
+                    @csrf
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">Nama *</label>
+                        <input type="text" name="name" required placeholder="Nama lengkap"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                    </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="text-xs text-gray-500 mb-1 block">Role *</label>
@@ -97,13 +101,12 @@
                         <option value="foreman">Foreman</option>
                     </select>
                 </div>
-                <div>
+                                <div>
                     <label class="text-xs text-gray-500 mb-1 block">Shift</label>
                     <select name="shift" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
                         <option value="">—</option>
-                        <option value="1">Shift 1 (08-16)</option>
-                        <option value="2">Shift 2 (16-24)</option>
-                        <option value="3">Shift 3 (00-08)</option>
+                        <option value="shift">Shift</option>
+                        <option value="reguler">Reguler</option>
                     </select>
                 </div>
             </div>
