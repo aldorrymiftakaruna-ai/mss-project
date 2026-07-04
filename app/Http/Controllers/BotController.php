@@ -218,32 +218,57 @@ class BotController extends Controller
      * @param BotRegistration $registration
      * @return \Illuminate\Http\RedirectResponse
      */
-        public function approveRegistration(BotRegistration $registration)
+                                public function approveRegistration(BotRegistration $registration)
     {
-        if (empty($registration->nik)) {
-            return back()->with('error', 'NIK belum diisi oleh teknisi. Tidak bisa disetujui sebelum NIK tersedia.');
+                $existingEmployee = Employee::where('telegram_id', $registration->telegram_id)->first();
+                if ($existingEmployee) {
+                    return back()->with('error', 'Teknisi dengan telegram_id ini sudah terdaftar sebagai employee.');
+                }
+
+                $registration->update([
+                    'status'       => 'approved',
+                    'processed_by' => Auth::id(),
+                    'processed_at' => now(),
+                ]);
+
+                $role = $registration->requested_jabatan === 'foreman' ? 'foreman' : 'teknisi';
+
+                Employee::create([
+                    'telegram_id'       => $registration->telegram_id,
+                    'telegram_username' => $registration->telegram_username,
+                    'name'              => $registration->name,
+                    'role'              => $role,
+                    'is_active'         => true,
+                ]);
+
+                // Kirim notifikasi ke user bahwa akun sudah disetujui
+                $this->sendTelegramMessage(
+                    $registration->telegram_id,
+                    "Halo {$registration->name}! Akun kamu sudah terdaftar dan aktif. Anda sudah bisa melakukan reporting."
+                );
+
+                return back()->with('success', 'Pendaftaran ' . $registration->name . ' disetujui.');
+    }
+
+    /**
+     * Kirim pesan ke Telegram user.
+     */
+    private function sendTelegramMessage(int|string $chatId, string $text): void
+    {
+        $token = config('telegram.bot_token');
+        if (empty($token)) {
+            return;
         }
 
-        $existingEmployee = Employee::where('telegram_id', $registration->telegram_id)->first();
-        if ($existingEmployee) {
-            return back()->with('error', 'Teknisi dengan telegram_id ini sudah terdaftar sebagai employee.');
+        try {
+            Http::timeout(10)->post("https://api.telegram.org/bot{$token}/sendMessage", [
+                'chat_id'    => $chatId,
+                'text'       => $text,
+                'parse_mode' => 'Markdown',
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal kirim notifikasi approve: ' . $e->getMessage());
         }
-
-        $registration->update([
-            'status'       => 'approved',
-            'processed_by' => Auth::id(),
-            'processed_at' => now(),
-        ]);
-
-        Employee::create([
-            'telegram_id'       => $registration->telegram_id,
-            'telegram_username' => $registration->telegram_username,
-            'name'              => $registration->name,
-            'nik'               => $registration->nik,
-            'is_active'         => true,
-        ]);
-
-        return back()->with('success', 'Pendaftaran ' . $registration->name . ' disetujui.');
     }
 
     /**

@@ -39,12 +39,26 @@ class TelegramWebhookController extends Controller
                     return $this->handleStart($chatId, $telegramId, $username, $firstName);
                 }
 
+                // Cek apakah user sedang dalam proses registrasi
+                $pendingReg = BotRegistration::where('telegram_id', $telegramId)
+                    ->where('status', 'pending')
+                    ->latest()
+                    ->first();
+
+                if ($pendingReg && $pendingReg->step === 'waiting_name') {
+                    return $this->handleNameInput($chatId, $pendingReg, $text);
+                }
+
+                if ($pendingReg && $pendingReg->step === 'waiting_jabatan') {
+                    return $this->handleJabatanInput($chatId, $pendingReg, $text);
+                }
+
                 $employee = Employee::where('telegram_id', $telegramId)
                     ->where('is_active', true)
                     ->first();
 
                 if (!$employee) {
-                    return $this->sendMessage($chatId, 'Maaf, akun kamu belum terdaftar atau belum disetujui. Silakan hubungi admin.');
+                    return $this->sendMessage($chatId, 'Harap menunggu persetujuan admin sebelum melakukan reporting.');
                 }
 
                 return $this->handleReport($chatId, $employee, $text);
@@ -57,6 +71,9 @@ class TelegramWebhookController extends Controller
         }
     }
 
+    /**
+     * Handle /start — buka registrasi baru, tanya nama lengkap.
+     */
     protected function handleStart($chatId, $telegramId, $username, $firstName)
     {
         $employee = Employee::where('telegram_id', $telegramId)->first();
@@ -68,24 +85,81 @@ class TelegramWebhookController extends Controller
             return $this->sendMessage($chatId, 'Akun kamu masih belum aktif. Silakan hubungi admin.');
         }
 
-        $pending = BotRegistration::where('telegram_id', $telegramId)
+        // Hapus registrasi pending sebelumnya yang belum selesai
+        BotRegistration::where('telegram_id', $telegramId)
             ->where('status', 'pending')
-            ->first();
+            ->delete();
 
-        if ($pending) {
-            return $this->sendMessage($chatId, 'Pendaftaran kamu masih diproses. Silakan tunggu konfirmasi dari admin.');
-        }
-
-        BotRegistration::create([
+                BotRegistration::create([
             'telegram_id'       => $telegramId,
             'telegram_username' => $username,
             'name'              => $firstName,
             'status'            => 'pending',
+            'step'              => 'waiting_name',
         ]);
 
         return $this->sendMessage(
             $chatId,
-            "Halo $firstName! Untuk mendaftar sebagai teknisi, silakan kirim NIK kamu.\n\nContoh: NIK 123456"
+            "Halo! Silakan kirim *nama lengkap* kamu."
+        );
+    }
+
+    /**
+     * Handle input nama dari user — simpan lalu tanya jabatan.
+     */
+    protected function handleNameInput($chatId, BotRegistration $registration, string $name)
+    {
+        $name = trim($name);
+        if (strlen($name) < 2) {
+            return $this->sendMessage($chatId, 'Nama terlalu pendek. Silakan kirim nama lengkap kamu.');
+        }
+
+        $registration->update([
+            'name' => $name,
+            'step' => 'waiting_jabatan',
+        ]);
+
+        // Keyboard inline untuk pilihan jabatan
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => 'Teknisi', 'callback_data' => 'jabatan:teknisi'],
+                ],
+                [
+                    ['text' => 'Foreman', 'callback_data' => 'jabatan:foreman'],
+                ],
+                [
+                    ['text' => 'Supervisor', 'callback_data' => 'jabatan:supervisor'],
+                ],
+            ]
+        ];
+
+        return $this->sendMessageWithKeyboard($chatId, "Terima kasih *{$name}*! Pilih jabatan kamu:", $keyboard);
+    }
+
+    /**
+     * Handle input jabatan dari user (teks biasa: "teknisi", "foreman", "supervisor").
+     */
+    protected function handleJabatanInput($chatId, BotRegistration $registration, string $jabatan)
+    {
+        $jabatan = strtolower(trim($jabatan));
+        $valid = ['teknisi', 'foreman', 'supervisor'];
+
+        if (!in_array($jabatan, $valid)) {
+            return $this->sendMessage(
+                $chatId,
+                "Jabatan tidak valid. Pilih salah satu: Teknisi, Foreman, atau Supervisor."
+            );
+        }
+
+        $registration->update([
+            'requested_jabatan' => $jabatan,
+            'step'              => null,
+        ]);
+
+        return $this->sendMessage(
+            $chatId,
+            "Pendaftaran kamu sudah diterima. Silakan tunggu persetujuan dari admin."
         );
     }
 
@@ -160,7 +234,7 @@ class TelegramWebhookController extends Controller
         return $this->sendMessage($chatId, $response);
     }
 
-    protected function sendMessage($chatId, string $text)
+        protected function sendMessage($chatId, string $text)
     {
         $token = config('telegram.bot_token');
 
@@ -183,6 +257,37 @@ class TelegramWebhookController extends Controller
             return response('OK');
         } catch (\Exception $e) {
             Log::error("TelegramWebhook sendMessage exception: " . $e->getMessage());
+            return response('OK');
+        }
+    }
+
+    /**
+     * Kirim pesan dengan inline keyboard (untuk pilihan jabatan).
+     */
+    protected function sendMessageWithKeyboard($chatId, string $text, array $keyboard)
+    {
+        $token = config('telegram.bot_token');
+
+        if (empty($token)) {
+            Log::info("[Telegram Mock] Would send to $chatId with keyboard: $text");
+            return response('OK');
+        }
+
+        try {
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$token}/sendMessage", [
+                'chat_id'      => $chatId,
+                'text'         => $text,
+                'parse_mode'   => 'Markdown',
+                'reply_markup' => json_encode($keyboard),
+            ]);
+
+            if (!$response->successful()) {
+                Log::warning("TelegramWebhook sendMessageWithKeyboard failed: " . $response->body());
+            }
+
+            return response('OK');
+        } catch (\Exception $e) {
+            Log::error("TelegramWebhook sendMessageWithKeyboard exception: " . $e->getMessage());
             return response('OK');
         }
     }

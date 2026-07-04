@@ -67,35 +67,61 @@
                 <th class="px-5 py-3 text-left">Nama Equipment</th>
                 <th class="px-5 py-3 text-left">Model</th>
                 <th class="px-5 py-3 text-left">PT</th>
-                                <th class="px-5 py-3 text-left">Status</th>
+                                <th class="px-5 py-3 text-left">Status Vibr/Temp</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
             @forelse($assets as $asset)
+            @php
+                                $latestMeas = $asset->cmMeasurements->first();
+                                if ($latestMeas) {
+                                    $vibFields = [
+                                        'driver_de_vib_v','driver_de_vib_h','driver_de_vib_a',
+                                        'driver_nde_vib_v','driver_nde_vib_h','driver_nde_vib_a',
+                                        'driven_de_vib_v','driven_de_vib_h','driven_de_vib_a',
+                                        'driven_nde_vib_v','driven_nde_vib_h','driven_nde_vib_a',
+                                    ];
+                                    $maxVib = 0;
+                                    foreach ($vibFields as $f) { $v = (float)($latestMeas->$f ?? 0); if ($v > $maxVib) $maxVib = $v; }
+                                    $tempFields = ['driver_de_temp','driver_nde_temp','driven_de_temp','driven_nde_temp'];
+                                    $maxTemp = 0;
+                                    foreach ($tempFields as $f) { $t = (float)($latestMeas->$f ?? 0); if ($t > $maxTemp) $maxTemp = $t; }
+                                } else {
+                                    $maxVib = null;
+                                    $maxTemp = null;
+                                }
+            @endphp
             <tr class="hover:bg-gray-50 asset-row"
-                data-pt="{{ $asset->company->code }}"
-                data-status="{{ $asset->status }}">
-                <td class="px-5 py-3">
-                    <a href="{{ route('assets.show', $asset) }}"
-                       class="font-mono text-xs font-semibold text-[#0E9E8E] hover:underline">
-                        {{ $asset->tag_no }}
-                    </a>
-                </td>
-                <td class="px-5 py-3 font-medium text-gray-800">{{ $asset->description }}</td>
-                <td class="px-5 py-3 text-gray-500">{{ $asset->model ?? '—' }}</td>
-                <td class="px-5 py-3 text-gray-500">{{ $asset->company->code }}</td>
-                <td class="px-5 py-3">
-                    @php
-                        $colors = [
-                            'normal' => 'bg-green-100 text-green-700',
-                            'alarm'  => 'bg-amber-100 text-amber-700',
-                            'danger' => 'bg-red-100 text-red-700',
-                        ];
-                    @endphp
-                    <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$asset->status] ?? 'bg-gray-100 text-gray-600' }}">
-                        {{ ucfirst($asset->status) }}
-                    </span>
-                </td>
+                                data-pt="{{ $asset->company->code }}"
+                                data-status="{{ $asset->status }}">
+                                <td class="px-5 py-3">
+                                    <a href="{{ route('assets.show', $asset) }}"
+                                       class="font-mono text-xs font-semibold text-[#0E9E8E] hover:underline">
+                                        {{ $asset->tag_no }}
+                                    </a>
+                                </td>
+                                <td class="px-5 py-3 font-medium text-gray-800">{{ $asset->description }}</td>
+                                <td class="px-5 py-3 text-gray-500">{{ $asset->model ?? '—' }}</td>
+                                <td class="px-5 py-3 text-gray-500">{{ $asset->company->code }}</td>
+                                <td class="px-5 py-3">
+                                    @php
+                                        $colors = [
+                                            'normal' => 'bg-green-100 text-green-700',
+                                            'alarm'  => 'bg-amber-100 text-amber-700',
+                                            'danger' => 'bg-red-100 text-red-700',
+                                        ];
+                                    @endphp
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$asset->status] ?? 'bg-gray-100 text-gray-600' }}">
+                                            {{ ucfirst($asset->status) }}
+                                        </span>
+                                        @if($maxVib !== null)
+                                        <span class="text-[10px] text-gray-400 font-mono" title="Vibrasi maks: {{ $maxVib }} mm/s, Temp maks: {{ $maxTemp }} °C">
+                                            V:{{ number_format($maxVib, 1) }} T:{{ number_format($maxTemp, 1) }}
+                                        </span>
+                                        @endif
+                                    </div>
+                                </td>
             </tr>
             @empty
             <tr>

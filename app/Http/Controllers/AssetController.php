@@ -19,7 +19,17 @@ class AssetController extends Controller
     // ── Index ─────────────────────────────────────────────────────
     public function index()
     {
-        $assets    = Asset::with('company')->latest()->get();
+        $assets = Asset::with('company', 'cmMeasurements')->latest()->get();
+
+        // Refresh status equipment berdasarkan CM measurement terbaru
+        // agar kolom status sesuai dengan vibrasi & temperature aktual
+        foreach ($assets as $asset) {
+            $asset->refreshStatus();
+        }
+
+        // Muat ulang asset setelah perubahan status
+        $assets = Asset::with('company', 'cmMeasurements')->latest()->get();
+
         $companies = Company::all();
         return view('assets.index', compact('assets', 'companies'));
     }

@@ -1,0 +1,349 @@
+================================================================================
+                          STRUKTUR PROJECT MSS
+              Maintenance Support System (Laravel 13 + PHP 8.3)
+================================================================================
+
+ROOT: C:\Users\ASUS\mss-project
+
+================================================================================
+ A. FILE KONFIGURASI & SETUP
+================================================================================
+
+composer.json           — Dependensi PHP: Laravel 13, PhpSpreadsheet, Doctrine DBAL
+package.json            — Dependensi Node.js: Vite, Tailwind, Alpine.js
+vite.config.js          — Konfigurasi Vite bundler
+.env.example            — Template environment variables
+artisan                 — CLI Laravel
+
+================================================================================
+ B. BOOTSTRAP
+================================================================================
+
+bootstrap/
++-- app.php             — Service container + middleware alias (AdminMiddleware)
++-- providers.php       — Service provider registration
++-- cache/              — Cache compiled config/routes
+
+================================================================================
+ C. KONFIGURASI (config/)
+================================================================================
+
+config/
++-- app.php             — Konfigurasi aplikasi Laravel
++-- auth.php            — Autentikasi
++-- cache.php           — Cache
++-- database.php        — Database (SQLite sebagai default)
++-- filesystems.php     — Filesystem disk (public, local)
++-- logging.php         — Logging
++-- mail.php            — Mail
++-- queue.php           — Queue
++-- services.php        — Service pihak ketiga (termasuk Telegram legacy)
++-- session.php         — Session
++-- telegram.php        — Konfigurasi Telegram bot (token, username, photo_disk, dll)
+
+================================================================================
+ D. ROUTES
+================================================================================
+
+routes/
++-- web.php             — Semua route web aplikasi
+|   +-- / (redirect ke dashboard)
+|   +-- POST /telegram/webhook — Webhook Telegram (tanpa auth)
+|   +-- Semua route admin di bawah middleware 'admin':
+|       +-- Dashboard: /dashboard
+|       +-- Assets CRUD + import + BOM
+|       +-- Maintenance CRUD + manpower + metrics
+|       +-- Condition Monitoring (CM) CRUD + import + findings
+|       +-- Spare Parts CRUD + import + update stok + images
+|       +-- Employees CRUD
+|       +-- DSS / Decision Support System
+|       +-- Settings / Threshold
+|       +-- AI Providers + Aliases
+|       +-- Bot Telegram Panel (settings, registrations, polling)
+|
++-- console.php         — Artisan commands (telegram:poll dll)
+
+================================================================================
+ E. MODEL (app/Models/)
+================================================================================
+
+app/Models/
++-- User.php            — User autentikasi Laravel default
+|
++-- Company.php         — Perusahaan (NPA, CES, dll)
+|   Fields: code, name, alias
+|   Relasi: assets(), employees()
+|
++-- Asset.php           — Equipment/Mesin
+|   Fields: company_id, tag_no, description, model, serial_number,
+|           head_capacity, motor_kw, motor_rpm, motor_ampere, status
+|   Relasi: company(), spareParts(), maintenanceReports(),
+|           cmMeasurements(), cmFindings()
+|   Method: calcStatusFromCm(), refreshStatus(), statusColor(), thresholds()
+|
++-- Employee.php        — Karyawan/Teknisi (menggantikan model Technician)
+|   Fields: company_id, name, telegram_id, telegram_username,
+|           role (foreman/teknisi/supervisor), shift, is_active
+|   Relasi: company(), maintenanceReports(), manpowerLogs(),
+|           cmMeasurements()
+|
++-- MaintenanceReport.php — Laporan Maintenance
+|   Fields: asset_id, reported_by, shift, tanggal, jenis,
+|           deskripsi_masalah, tindakan, report_code,
+|           work_duration_minutes, downtime_minutes, root_cause,
+|           photo_documentation (json), wizard_started_at,
+|           submitted_at, ai_suggestion_json (json), status,
+|           foto_path, catatan, is_overtime, overtime_hours
+|   Relasi: asset(), reporter(), manpowerLogs()
+|   Accessor: photoDocumentationUrls()
+|
++-- ManpowerLog.php     — Log tenaga kerja pada laporan maintenance
+|   Fields: maintenance_report_id, employee_id, durasi_menit
+|   Relasi: maintenanceReport(), employee()
+|
++-- CmMeasurement.php   — Data pengukuran Condition Monitoring
+|   Fields: asset_id, measured_by, tanggal,
+|           driver_de_vib_v/h/a, driver_de_cf, driver_de_temp,
+|           driver_nde_vib_v/h/a, driver_nde_cf, driver_nde_temp,
+|           driver_ampere,
+|           driven_de_vib_v/h/a, driven_de_cf, driven_de_temp,
+|           driven_nde_vib_v/h/a, driven_nde_cf, driven_nde_temp,
+|           catatan
+|   Relasi: asset(), measuredBy()
+|
++-- CmFinding.php       — Temuan visual dari Condition Monitoring
+|   Fields: asset_id, tanggal, kategori, severity (low/medium/high),
+|           status (open/closed), analysis, action, pic,
+|           date_action, remark, foto_path, foto_path_2, foto_path_3,
+|           finding_code
+|   Relasi: asset()
+|
++-- SparePart.php       — Spare Part / Suku Cadang
+|   Fields: company_id, kode_material, deskripsi, satuan,
+|           stok_minimum, stok_tersedia, kategori
+|   Relasi: company(), assets(), images()
+|   Accessor: status (habis/kritis/aman)
+|
++-- SparePartImage.php  — Gambar spare part
+|   Fields: spare_part_id, path, label
+|
++-- AssetSparePart.php  — Pivot: relasi asset <-> spare part (BOM)
+|   Fields: asset_id, spare_part_id, jumlah_kebutuhan, keterangan
+|
++-- Setting.php         — Pengaturan threshold vibrasi & temperatur
+|   Fields: key, value, label, unit, group
+|   Static method: get(key, default)
+|
++-- BotRegistration.php — Pendaftaran teknisi via Telegram
+|   Fields: telegram_id, telegram_username, name, nik,
+|           requested_at, status (pending/approved/rejected),
+|           processed_by, processed_at
+|   Relasi: processedBy()
+|
++-- BotUnknownAsset.php — Asset tidak dikenal dari laporan bot
+|   Fields: report_id, keyword_mentioned
+|   Relasi: maintenanceReport()
+|
++-- AiProvider.php      — Provider AI (Groq, Ollama, OpenAI)
+|   Fields: name, provider_type, api_key_encrypted, model,
+|           endpoint_url, priority, monthly_token_limit,
+|           daily_token_limit, tokens_used_today, tokens_used_month,
+|           request_count_24h, last_used_at, last_health_check,
+|           status (healthy/exhausted/error/disabled)
+|   Accessor: api_key (decrypt otomatis)
+|   Scope: healthy(), byPriority()
+|
++-- AiAlias.php         — Alias untuk pencocokan equipment oleh AI
+|   Fields: alias_text, asset_id, employee_id, source,
+|           confidence, usage_count, status
+|           (pending/confirmed/rejected), confirmed_by
+|   Relasi: asset(), employee(), confirmer()
+|
++-- AiUsageLog.php      — Log penggunaan AI
+    Fields: provider_id, report_id, tokens_used, request_type,
+            response_time_ms, status (success/error), error_message
+    Relasi: provider(), report()
+    Scope: lastHours(), thisMonth(), success(), error()
+    Static: statsByRequestType(), dailyTokensPerProvider(),
+            statsPerProvider24h()
+
+================================================================================
+ F. CONTROLLER (app/Http/Controllers/)
+================================================================================
+
+app/Http/Controllers/
++-- Controller.php              — Base controller
++-- DashboardController.php     — Dashboard: KPI, chart, insight, rekomendasi
++-- AssetController.php         — CRUD equipment + import Excel + BOM
++-- MaintenanceController.php   — CRUD laporan maintenance + manpower + metrics
++-- CmController.php            — CRUD CM + findings + import + dashboard CM
++-- SparePartController.php     — CRUD sparepart + import + update stok + images
++-- EmployeeController.php      — CRUD karyawan
++-- DssController.php           — Decision Support System: KPI, rekomendasi, tren
++-- SettingController.php       — Threshold vibrasi & temperatur
++-- AiProviderController.php    — CRUD AI provider + test koneksi + alias
++-- BotController.php           — Panel bot Telegram: status, registrasi, polling
+(TelegramWebhookController)     — Menangani webhook dari Telegram
+
+================================================================================
+ G. MIDDLEWARE
+================================================================================
+
+app/Http/Middleware/
++-- AdminMiddleware.php         — Middleware untuk proteksi route admin
+
+================================================================================
+ H. SERVICES
+================================================================================
+
+app/Services/
++-- AiService.php               — Layanan AI untuk analisis laporan otomatis
++-- Traits/
+|   +-- AiKeywordParserTrait.php    — Parser keyword dari respons AI
+|   +-- AiProviderCallerTrait.php   — Pemanggil provider AI
++-- Telegram/
+    +-- PhotoStorageService.php     — Upload & simpan foto dari Telegram
+    +-- ReportWizardService.php     — Wizard laporan via Telegram
+    +-- Traits/
+        +-- WizardCallbackHandlerTrait.php  — Handler callback keyboard
+        +-- WizardNewStepsTrait.php         — Langkah-langkah wizard baru
+        +-- WizardPhotoAddonTrait.php       — Upload foto tambahan
+        +-- WizardReportSaverTrait.php      — Simpan laporan dari wizard
+        +-- WizardStepHandlerTrait.php      — Handler per langkah wizard
+        +-- WizardUtilityTrait.php          — Utility wizard
+
+================================================================================
+ I. PROVIDER
+================================================================================
+
+app/Providers/
++-- AppServiceProvider.php      — Registrasi layanan aplikasi
+
+================================================================================
+ J. RESOURCES / VIEWS (resources/views/)
+================================================================================
+
+resources/views/
++-- layouts/
+|   +-- app.blade.php           — Layout utama: sidebar, topbar, konten
+|
++-- dashboard.blade.php         — Halaman dashboard dengan KPI cards,
+|                                 chart 7 hari, top 5 equipment, CM alerts,
+|                                 insight downtime & lembur
+|
++-- assets/
+|   +-- index.blade.php         — Daftar equipment
+|   +-- show.blade.php          — Detail equipment + CM + BOM
+|   +-- import.blade.php        — Import equipment dari Excel
+|   +-- bom-import.blade.php    — Import BOM dari Excel
+|
++-- maintenance/
+|   +-- index.blade.php         — Daftar laporan maintenance
+|   +-- show.blade.php          — Detail laporan + manpower
+|
++-- cm/
+|   +-- index.blade.php         — Dashboard CM: chart, top vibrasi,
+|   |                             donut per PT, temuan visual
+|   +-- findings-show.blade.php — Detail temuan visual
+|   +-- import.blade.php        — Import data CM dari Excel
+|   +-- import-finding.blade.php— Import temuan visual dari Excel
+|
++-- spareparts/
+|   +-- index.blade.php         — Daftar spare part
+|   +-- show.blade.php          — Detail spare part + gambar
+|   +-- import.blade.php        — Import spare part + BOM dari Excel
+|   +-- update-stok.blade.php   — Update stok massal dari Excel
+|
++-- employees/
+|   +-- index.blade.php         — Daftar karyawan
+|   +-- show.blade.php          — Detail karyawan + laporannya
+|
++-- dss/
+|   +-- index.blade.php         — Decision Support System: KPI, tren 30 hari,
+|                                 distribusi jenis, top 10 equipment,
+|                                 produktivitas, severity CM, timeline,
+|                                 downtime per PT, lembur, rekomendasi
+|
++-- settings/
+|   +-- index.blade.php         — Pengaturan threshold vibrasi & temperatur
+|
++-- ai-providers/
+|   +-- index.blade.php         — Panel AI: provider, usage, alias
+|
++-- bot/
+|   +-- index.blade.php         — Panel Bot Telegram: status, registrasi,
+|                                 teknisi aktif, unknown assets
+|
++-- components/
+    +-- status-badge.blade.php  — Komponen badge status
+
+================================================================================
+ K. DATABASE MIGRATIONS (database/migrations/)
+================================================================================
+
+0001_01_01_000000_create_users_table.php
+0001_01_01_000001_create_cache_table.php
+0001_01_01_000002_create_jobs_table.php
+2025_01_01_000001_update_assets_status_enum.php
+2025_01_01_000002_create_settings_table.php
+2026_06_27_085322_create_companies_table.php
+2026_06_27_085323_create_employees_table.php
+2026_06_27_085324_create_assets_table.php
+2026_06_27_085324_create_spare_parts_table.php
+2026_06_27_085325_create_asset_spare_parts_table.php
+2026_06_27_085326_create_maintenance_reports_table.php
+2026_06_27_085326_create_purchase_requests_table.php
+2026_06_27_085327_create_cm_findings_table.php
+2026_06_27_085327_create_cm_measurements_table.php
+2026_06_27_085327_create_manpower_logs_table.php
+2026_06_28_161435_add_company_id_to_spare_parts_table.php
+2026_06_29_000020_create_spare_part_images_table.php
+2026_06_29_083920_modify_measured_by_in_cm_measurements_table.php
+2026_06_30_000001_add_detail_columns_to_cm_findings_table.php
+2026_07_01_000001_add_finding_code_to_cm_findings_table.php
+2026_07_01_080048_simplify_cm_findings_table.php
+2026_07_01_080049_fix_cm_findings_kategori_and_status.php
+2026_07_01_083847_change_kategori_to_string_on_cm_findings.php
+2026_07_02_105951_modify_maintenance_reports_columns.php
+2026_07_03_132134_add_supervisor_to_employees_role.php
+2026_07_03_133804_update_maintenance_reports_status_again.php
+2026_07_03_140000_drop_jam_from_manpower_logs.php
+2026_07_03_141000_drop_durasi_from_manpower_logs.php
+2026_07_03_145000_add_durasi_back_to_manpower_logs.php
+2026_07_15_000001_add_telegram_and_wizard_columns.php
+2026_07_20_000001_create_ai_providers_tables.php
+2026_07_20_000002_add_downtime_overtime_to_maintenance_reports.php
+2026_07_25_000001_create_bot_tables.php
+
+================================================================================
+ L. SEEDER
+================================================================================
+
+database/seeders/
++-- DatabaseSeeder.php      — Seeder utama
++-- CompanySeeder.php       — Seeder perusahaan (NPA, CES)
+
+================================================================================
+ M. ASET FRONTEND
+================================================================================
+
+resources/
++-- css/app.css             — Styling Tailwind CSS
++-- js/app.js               — JavaScript aplikasi
+public/
++-- index.php               — Entry point aplikasi
++-- .htaccess                — Konfigurasi Apache
++-- favicon.ico              — Ikon
+
+================================================================================
+ N. STORAGE
+================================================================================
+
+storage/
++-- app/public/             — File publik (foto CM, sparepart, laporan)
++-- framework/              — Cache, session, views
++-- logs/                   — Log aplikasi + log polling Telegram
+
+================================================================================
+                      TOTAL: ~90+ file inti
+================================================================================

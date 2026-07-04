@@ -1,0 +1,481 @@
+================================================================================
+    DOKUMENTASI FITUR — MSS (Maintenance Support System)
+    Laravel 13 + PHP 8.3 + Tailwind CSS + SQLite
+================================================================================
+
+Project ini adalah sistem informasi manajemen maintenance untuk pabrik/
+perusahaan manufaktur, mencakup pencatatan equipment, laporan maintenance,
+condition monitoring (vibrasi & temperatur), manajemen spare part,
+decision support system, integrasi Telegram, dan AI.
+
+Berikut ringkasan setiap fitur untuk referensi skripsi Anda:
+
+================================================================================
+[1]  DASHBOARD
+================================================================================
+
+Controller : DashboardController@index
+View      : resources/views/dashboard.blade.php
+Route     : GET /dashboard
+
+FITUR:
+- 6 KPI Cards: Total Equipment, Equipment Danger, Laporan Hari Ini,
+  Downtime Bulan Ini, Lembur Bulan Ini, Jam Kerja Minggu Ini.
+- Mini Chart: Tren laporan 7 hari terakhir (bar chart sederhana CSS).
+- Top 5 Equipment Rusak Bulan Ini (table dengan status vibrasi).
+- CM Alert: Temuan CM severity high/critical yang masih open.
+- Equipment Danger: Daftar equipment dengan status danger dari CM.
+- Sparepart Kritis: Stok di bawah minimum.
+- Downtime vs KPI: Progress bar (KPI 20 jam/bulan).
+- Lembur vs KPI: Progress bar (KPI 40 jam/bulan).
+- Link ke halaman DSS.
+
+TEKNOLOGI: Vanilla JS, CSS murni (tanpa library chart).
+TEMA: Aksen teal #0E9E8E.
+
+================================================================================
+[2]  EQUIPMENT / ASSET MANAGEMENT
+================================================================================
+
+Controller : AssetController
+View      : index.blade.php, show.blade.php, import.blade.php,
+            bom-import.blade.php
+Route     : /assets (CRUD)
+
+FITUR:
+- CRUD equipment: tag_no, description, model, serial_number, motor specs.
+- Setiap equipment terkait dengan satu PT (company_id).
+- Status equipment (normal/alarm/danger) diupdate otomatis dari data CM.
+- MTBF (Mean Time Between Failures) otomatis dihitung dari riwayat laporan.
+- Import massal equipment dari Excel dengan template.
+- BOM (Bill of Materials): Relasi equipment dengan spare part.
+- Import BOM dari Excel.
+- Download template BOM.
+
+STRUKTUR TABEL ASSETS:
+- id, company_id, tag_no (unique), description, model, serial_number,
+  head_capacity, motor_kw, motor_rpm, motor_ampere, status, timestamps.
+
+================================================================================
+[3]  LAPORAN MAINTENANCE
+================================================================================
+
+Controller : MaintenanceController
+View      : index.blade.php, show.blade.php
+Route     : /maintenance (CRUD)
+
+FITUR:
+- Input laporan: asset, pelapor (employee), shift, tanggal, jenis pekerjaan,
+  deskripsi masalah, tindakan, downtime, lembur.
+- Manpower log: Tambah teknisi yang terlibat, catat durasi kerja.
+- Work duration, downtime minutes, overtime tracking.
+- Status laporan.
+- Hapus laporan.
+- Update metrics (downtime + overtime) setelah laporan dibuat.
+
+KOLOM PENTING maintenance_reports:
+- report_code (kode unik laporan)
+- work_duration_minutes (durasi kerja dalam menit)
+- downtime_minutes (waktu downtime mesin)
+- is_overtime, overtime_hours (flag & jam lembur)
+- photo_documentation (json array path foto)
+- ai_suggestion_json (hasil analisis AI)
+- wizard_started_at, submitted_at (timestamp wizard bot Telegram)
+
+================================================================================
+[4]  CONDITION MONITORING (CM)
+================================================================================
+
+Controller : CmController
+View      : index.blade.php, findings-show.blade.php,
+            import.blade.php, import-finding.blade.php
+Route     : /cm (CRUD)
+
+FITUR CM MEASUREMENT:
+- Input data vibrasi: 12 titik pengukuran (DE/NDE, Driver/Driven, V/H/A).
+- Input temperature: 4 titik (DE/NDE, Driver/Driven).
+- Crest Factor, Ampere driver.
+- Import massal dari Excel (24 kolom).
+- Dashboard CM: stacked bar chart (12 bulan), donut per PT, top 10 vibrasi.
+- Trend chart interaktif (filter 3/6/12 bulan atau custom range).
+- Status equipment (normal/alarm/danger) otomatis dihitung dari threshold.
+- Threshold vibrasi terbagi 4 kelas berdasarkan motor_kw (ISO 10816).
+
+FITUR CM FINDING / TEMUAN VISUAL:
+- Input temuan: kategori, severity (low/medium/high), analysis, action, PIC.
+- Upload foto (maks 3 foto).
+- Status: open/closed.
+- Import temuan dari Excel.
+- Timeline temuan per equipment (di halaman DSS).
+- Dialokasi ke PIC: Mechanic, Electric, Production.
+
+STATUS OTOMATIS DARI CM:
+- Threshold vibrasi: 4 kelas motor (Class 1: <=15kW, Class 2: 75kW,
+  Class 3: 300kW, Class 4: >300kW) — bisa diubah di Settings.
+- Threshold temperature: default 82 C — bisa diubah di Settings.
+- Sistem membandingkan nilai maksimum vibrasi & temperature dari
+  pengukuran terbaru, lalu menentukan status (normal/alarm/danger).
+
+================================================================================
+[5]  SPARE PART MANAGEMENT
+================================================================================
+
+Controller : SparePartController
+View      : index.blade.php, show.blade.php,
+            import.blade.php, update-stok.blade.php
+Route     : /spareparts (CRUD)
+
+FITUR:
+- CRUD spare part: kode_material, deskripsi, satuan, stok min, stok tersedia.
+- Status stok otomatis: aman / kritis / habis.
+- Upload gambar spare part (max 10, format jpg/jpeg/png/pdf, 5MB each).
+- Import massal dari Excel + BOM dalam satu file (2 sheet).
+- Update stok massal dari Excel (format laporan gudang).
+- Download template import.
+- Relasi BOM dengan equipment (jumlah kebutuhan, keterangan).
+
+================================================================================
+[6]  KARYAWAN / EMPLOYEE
+================================================================================
+
+Controller : EmployeeController
+View      : index.blade.php, show.blade.php
+Route     : /employees (CRUD)
+
+FITUR:
+- CRUD karyawan: nama, role (foreman/teknisi/supervisor), shift, is_active.
+- Integrasi Telegram: telegram_id, telegram_username.
+- Filter laporan per karyawan (per bulan/tahun).
+- Lihat riwayat laporan maintenance yang dibuat oleh karyawan.
+
+ROLE:
+- foreman: Mandor / leader teknisi.
+- teknisi: Teknisi lapangan.
+- supervisor: Supervisor maintenance.
+
+================================================================================
+[7]  DECISION SUPPORT SYSTEM (DSS)
+================================================================================
+
+Controller : DssController@index
+View      : resources/views/dss/index.blade.php
+Route     : /dss
+
+FITUR ANALISIS:
+- Ringkasan KPI: total asset, equipment danger/alarm, total laporan,
+  stok kritis, karyawan aktif.
+- Tren 30 hari: chart laporan harian 30 hari terakhir.
+- Distribusi jenis pekerjaan: breakdown jenis laporan (pie/bar view).
+- Top 10 equipment rusak (6 bulan terakhir).
+- Produktivitas karyawan: top 10 berdasarkan total menit kerja.
+- Severity CM: statistik critical/high/medium/low + yang masih open.
+- Timeline CM per equipment: filter interaktif pilih asset, lihat
+  riwayat temuan dalam timeline.
+- Downtime per company: breakdown bulan ini untuk NPA dan CES.
+- Chart downtime bulanan: perbandingan NPA vs CES (12 bulan).
+- Lembur statistik: total jam, jumlah laporan, top 5 teknisi lembur.
+- REKOMENDASI OTOMATIS: Sistem generate rekomendasi preskriptif
+  berbasis data, mencakup:
+  - Equipment danger
+  - Equipment alarm
+  - CM severity tinggi masih open
+  - Stok sparepart kritis
+  - MTBF rendah (< 30 hari)
+  - Tidak ada laporan 7 hari
+  - Downtime tinggi
+  - Lembur berlebih
+
+================================================================================
+[8]  SETTINGS / THRESHOLD
+================================================================================
+
+Controller : SettingController
+View      : resources/views/settings/index.blade.php
+Route     : /settings
+
+FITUR:
+- Pengaturan threshold vibrasi untuk 4 kelas motor (alarm & danger).
+- Pengaturan threshold temperature (danger).
+- Update massal: submit form langsung update semua nilai.
+- Group setting: 'vibration' dan 'temperature'.
+
+DEFAULT THRESHOLD:
+- Class 1 (<=15kW): alarm 2.3, danger 4.5 mm/s
+- Class 2 (<=75kW): alarm 4.5, danger 7.1 mm/s
+- Class 3 (<=300kW): alarm 7.1, danger 11.0 mm/s
+- Class 4 (>300kW): alarm 11.0, danger 18.0 mm/s
+- Temperature danger: 82 C
+
+================================================================================
+[9]  AI PROVIDERS
+================================================================================
+
+Controller : AiProviderController
+View      : resources/views/ai-providers/index.blade.php
+Route     : /ai-providers
+
+FITUR:
+- CRUD provider AI: Groq, Ollama, OpenAI.
+- Konfigurasi per provider: API key (terenkripsi), model, endpoint,
+  priority, kuota harian & bulanan.
+- Status: healthy, exhausted, error, disabled.
+- Test koneksi: benar-benar panggil API (ping dengan max_tokens=1).
+- Test all: test semua provider sekaligus.
+- Auto-downgrade status ke error/exhausted jika test gagal.
+- Reset kuota harian massal.
+- Dashboard penggunaan: total requests 24h, success/error rate,
+  total tokens, avg response time.
+- Statistik per request type (health_check, dll).
+- Statistik per provider dalam 24 jam.
+- Usage log: riwayat lengkap pemanggilan API.
+
+MANAGEMENT ALIAS (AiAlias):
+- Alias adalah teks alternatif yang terdeteksi AI dari laporan teknisi
+  untuk mencocokkan equipment yang tidak ditulis dengan tag_no resmi.
+- Status: pending (butuh review), confirmed, rejected.
+- Konfirmasi/tolak alias dari panel.
+- Terkait asset_id dan employee_id.
+
+================================================================================
+[10] BOT TELEGRAM
+================================================================================
+
+Controller : BotController
+View      : resources/views/bot/index.blade.php
+Route     : /bot
+
+FITUR PANEL:
+- 6 Kartu Status: Bot Status, Teknisi Aktif, Terhubung Bot,
+  Laporan via Bot, Laporan Hari Ini, Unknown Assets.
+- Tab Status & Koneksi: Test connection, Set webhook, Delete webhook.
+- Tab Pendaftaran: Daftar teknisi yang minta registrasi via bot,
+  dengan tombol Approve/Reject.
+- Tab Teknisi Aktif: daftar employee yang punya telegram_id.
+- Tab Unknown Assets: daftar asset tidak dikenal dari laporan bot.
+- Polling: Start/Stop polling (manual via terminal), cek status.
+
+KONFIGURASI: config/telegram.php
+- bot_token, bot_username, photo_disk, photo_folder, photo_max_bytes
+
+WEBHOOK HANDLER (TelegramWebhookController):
+- Endpoint: POST /telegram/webhook (tanpa middleware auth)
+- Dipanggil langsung oleh server Telegram.
+
+WIZARD LAPORAN VIA TELEGRAM (ReportWizardService + Traits):
+- Wizard interaktif dengan inline keyboard.
+- Langkah-langkah: pilih PT, pilih equipment, input masalah,
+  jenis pekerjaan, foto, konfirmasi.
+- Menggunakan session untuk state wizard.
+- Traits:
+  - WizardCallbackHandlerTrait: Handler callback query dari keyboard.
+  - WizardStepHandlerTrait: Handler per langkah wizard.
+  - WizardNewStepsTrait: Langkah-langkah baru (custom).
+  - WizardReportSaverTrait: Simpan laporan dari data wizard.
+  - WizardPhotoAddonTrait: Upload foto tambahan.
+  - WizardUtilityTrait: Fungsi utility wizard.
+- PhotoStorageService: Upload & simpan foto dari chat Telegram.
+
+REGISTRASI BOT:
+- Teknisi mengirim perintah /start ke bot Telegram.
+- Bot meminta NIK dan nama, mengirim permintaan registrasi.
+- Admin menyetujui/menolak dari panel web.
+- Disetujui -> tercipta Employee baru dengan telegram_id.
+
+================================================================================
+[11] AI SERVICE (Analisis Laporan Otomatis)
+================================================================================
+
+File: app/Services/AiService.php
+      app/Services/Traits/AiKeywordParserTrait.php
+      app/Services/Traits/AiProviderCallerTrait.php
+
+FITUR:
+- Setelah laporan dikirim via wizard Telegram, sistem otomatis memanggil
+  AI (Groq/Ollama/OpenAI) untuk menganalisis.
+- AI membaca: deskripsi masalah, tindakan, root cause.
+- Output AI: saran (json) disimpan di ai_suggestion_json.
+- Keyword parser: Ekstrak equipment, sparepart, dan tindakan dari teks
+  bahasa Indonesia (campur informal).
+- Provider caller: Memilih provider sehat dengan prioritas tertinggi,
+  fallback jika error/rate limit.
+
+================================================================================
+[12] DATABASE — TABEL UTAMA
+================================================================================
+
+Berikut tabel-tabel inti:
+
+1. companies          — Perusahaan (PT)
+   Fields: code, name, alias
+
+2. assets             — Equipment/Mesin
+   Fields: company_id, tag_no, description, model, serial_number,
+           head_capacity, motor_kw, motor_rpm, motor_ampere, status
+
+3. employees          — Karyawan/Teknisi
+   Fields: company_id, name, telegram_id, telegram_username,
+           role, shift, is_active
+
+4. maintenance_reports — Laporan Maintenance
+   Fields: asset_id, reported_by, shift, tanggal, jenis,
+           deskripsi_masalah, tindakan, report_code, work_duration_minutes,
+           downtime_minutes, root_cause, photo_documentation (json),
+           wizard_started_at, submitted_at, ai_suggestion_json (json),
+           status, foto_path, catatan, is_overtime, overtime_hours
+
+5. manpower_logs      — Log tenaga kerja
+   Fields: maintenance_report_id, employee_id, durasi_menit
+
+6. cm_measurements    — Pengukuran CM (Condition Monitoring)
+   Fields: asset_id, measured_by, tanggal, + 24 kolom vibrasi & temp
+
+7. cm_findings        — Temuan Visual CM
+   Fields: asset_id, tanggal, kategori, severity, status,
+           analysis, action, pic, date_action, remark,
+           foto_path, foto_path_2, foto_path_3, finding_code
+
+8. spare_parts        — Spare Part / Suku Cadang
+   Fields: company_id, kode_material, deskripsi, satuan,
+           stok_minimum, stok_tersedia, kategori
+
+9. asset_spare_parts  — Pivot BOM (asset <-> spare part)
+   Fields: asset_id, spare_part_id, jumlah_kebutuhan, keterangan
+
+10. spare_part_images — Gambar spare part
+    Fields: spare_part_id, path, label
+
+11. settings          — Pengaturan threshold
+    Fields: key, value, label, unit, group
+
+12. ai_providers      — Provider AI
+    Fields: name, provider_type, api_key_encrypted, model,
+            endpoint_url, priority, monthly_token_limit,
+            daily_token_limit, tokens_used_today, request_count_24h,
+            status, last_used_at, last_health_check
+
+13. ai_usage_logs     — Log penggunaan AI
+    Fields: provider_id, report_id, tokens_used, request_type,
+            response_time_ms, status, error_message
+
+14. ai_aliases        — Alias pencocokan asset dari AI
+    Fields: alias_text, asset_id, employee_id, source,
+            confidence, usage_count, status, confirmed_by
+
+15. bot_registrations — Pendaftaran via Telegram
+    Fields: telegram_id, telegram_username, name, nik,
+            requested_at, status, processed_by, processed_at
+
+16. bot_unknown_assets — Asset tidak dikenal dari bot
+    Fields: report_id, keyword_mentioned
+
+17. users             — User autentikasi (default Laravel)
+
+18. purchase_requests — Purchase request (terdefinisi di migration)
+
+================================================================================
+[13] ARSITEKTUR TEKNIS
+================================================================================
+
+BACKEND:
+- Laravel 13 (PHP 8.3+)
+- Database: SQLite (file-based, tanpa setup server DB)
+- Eloquent ORM untuk semua query
+- Blade templating engine
+- Middleware: AdminMiddleware untuk proteksi route
+
+FRONTEND:
+- Tailwind CSS (utility-first framework)
+- Vanilla JavaScript (tidak ada framework JS berat)
+- Vite sebagai bundler aset
+- Layout: Sidebar navigasi (fixed, lebar 240px) + Topbar + Content
+- Tema warna: #0E9E8E (teal) sebagai aksen utama
+- Background sidebar: #0F1E35 (dark navy)
+
+INTEGRASI:
+- Telegram Bot API: Webhook + Polling mode
+- AI: Groq Cloud, OpenAI, Ollama (local LLM)
+- Excel: PhpSpreadsheet (import/export data)
+
+ALUR DATA UTAMA:
+1. Teknisi lapangan -> lapor via Telegram Bot (wizard)
+   -> AI analisis otomatis (Groq/Ollama)
+   -> Laporan tersimpan + status equipment terupdate
+
+2. Teknisi lapangan -> ukur vibrasi & temperatur
+   -> Input via web atau import Excel
+   -> Threshold otomatis menentukan status equipment
+
+3. Supervisor/DSS -> Lihat dashboard KPI & rekomendasi
+   -> Ambil keputusan maintenance berdasarkan data
+
+================================================================================
+[14] ROUTE COMPLETE LIST
+================================================================================
+
+ METHOD   | URL                                           | CONTROLLER
+----------|-----------------------------------------------|---------------------------
+ GET      | /                                             | redirect -> dashboard
+ POST     | /telegram/webhook                             | TelegramWebhookController
+
+ GET      | /dashboard                                    | DashboardController
+ GET|POST | /assets                                       | AssetController (CRUD)
+ GET      | /assets/{asset}/show                          | AssetController@show
+ GET      | /assets/import                                | AssetController@importForm
+ POST     | /assets/import                                | AssetController@import
+ GET|POST | /assets/bom/import                            | AssetController@bomImport
+ GET      | /assets/bom/template                          | AssetController@bomTemplate
+ POST     | /assets/{asset}/spare-parts                   | AssetController@attachSparePart
+ DELETE   | /assets/{asset}/spare-parts/{sparePart}       | AssetController@detachSparePart
+
+ GET|POST | /maintenance                                  | MaintenanceController (CRUD)
+ GET      | /maintenance/{maintenance}/show               | MaintenanceController@show
+ POST     | /maintenance/{maintenance}/manpower           | MaintenanceController@addManpower
+ PUT      | /maintenance/{maintenance}/metrics            | MaintenanceController@updateMetrics
+
+ GET|POST | /cm                                           | CmController (CRUD)
+ GET      | /cm/template                                  | CmController@downloadTemplate
+ GET|POST | /cm/import                                    | CmController@import
+ GET      | /cm/trend-data                                | CmController@trendData
+ GET      | /cm/findings/template                         | CmController@downloadTemplateFinding
+ GET|POST | /cm/findings/import                           | CmController@importFinding
+ GET      | /cm/findings/{cmFinding}                      | CmController@showFinding
+ PUT|DEL  | /cm/findings/{cmFinding}                      | CmController@updateFinding/destroyFinding
+
+ GET|POST | /spareparts                                   | SparePartController (CRUD)
+ GET      | /spareparts/template                          | SparePartController@downloadTemplate
+ GET|POST | /spareparts/import                            | SparePartController@import
+ GET|POST | /spareparts/update-stok                       | SparePartController@updateStok
+ POST     | /spareparts/{sparepart}/images                | SparePartController@uploadImage
+ DELETE   | /spareparts/{sparepart}/images/{image}        | SparePartController@deleteImage
+
+ GET|POST | /employees                                    | EmployeeController (CRUD)
+ GET      | /employees/{employee}/show                    | EmployeeController@show
+
+ GET      | /dss                                          | DssController@index
+ GET|POST | /settings                                     | SettingController@index/update
+
+ GET|POST | /ai-providers                                 | AiProviderController
+ PUT|DEL  | /ai-providers/{aiProvider}                    | AiProviderController@update/destroy
+ POST     | /ai-providers/test-all                        | AiProviderController@testAll
+ POST     | /ai-providers/reset-quota                     | AiProviderController@resetQuota
+ POST     | /ai-providers/{aiProvider}/test               | AiProviderController@test
+ POST     | /ai-providers/aliases/{alias}/confirm         | AiProviderController@confirmAlias
+ POST     | /ai-providers/aliases/{alias}/reject          | AiProviderController@rejectAlias
+
+ GET      | /bot                                          | BotController@index
+ POST     | /bot/settings                                 | BotController@updateSettings
+ POST     | /bot/test-connection                          | BotController@testConnection
+ POST     | /bot/set-webhook                              | BotController@setWebhook
+ POST     | /bot/delete-webhook                           | BotController@deleteWebhook
+ POST     | /bot/registrations/{reg}/approve              | BotController@approveRegistration
+ POST     | /bot/registrations/{reg}/reject               | BotController@rejectRegistration
+ POST     | /bot/polling/start                            | BotController@startPolling
+ POST     | /bot/polling/stop                             | BotController@stopPolling
+ GET      | /bot/polling/status                           | BotController@pollingStatus
+
+================================================================================
+                    Total: ~80+ route terdefinisi
+================================================================================
+
+Seluruh file ini bisa dijadikan referensi untuk Bab II (Landasan Teori)
+dan Bab III (Analisis & Perancangan Sistem) skripsi Anda.

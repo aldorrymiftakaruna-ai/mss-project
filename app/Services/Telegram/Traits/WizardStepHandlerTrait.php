@@ -210,7 +210,6 @@ trait WizardStepHandlerTrait
                 'keyboard' => [
                     ['text' => 'Cukup, Lanjutkan',  'callback_data' => 'wizard:confirm:photo_doc_done'],
                     ['text' => 'Tambah Foto Lagi',  'callback_data' => 'wizard:confirm:photo_doc_more'],
-                    ['text' => 'Skip (Tanpa Foto)', 'callback_data' => 'wizard:confirm:photo_doc_skip'],
                     ['text' => 'Batalkan Laporan',  'callback_data' => 'wizard:cancel_wizard'],
                 ],
             ];
@@ -223,7 +222,6 @@ trait WizardStepHandlerTrait
                     "Kirim foto lagi, atau lanjutkan:",
                 'keyboard' => [
                     ['text' => 'Cukup, Lanjutkan', 'callback_data' => 'wizard:confirm:photo_doc_done'],
-                    ['text' => 'Skip Sisa Foto',   'callback_data' => 'wizard:confirm:photo_doc_skip'],
                     ['text' => 'Batalkan Laporan', 'callback_data' => 'wizard:cancel_wizard'],
                 ],
             ];
@@ -264,7 +262,6 @@ trait WizardStepHandlerTrait
                 "Kirim foto berikutnya, atau ketik *selesai* untuk lanjut.",
             'keyboard' => [
                 ['text' => 'Selesai, Lanjutkan', 'callback_data' => 'wizard:confirm:photo_doc_done'],
-                ['text' => 'Skip',               'callback_data' => 'wizard:confirm:photo_doc_skip'],
                 ['text' => 'Batalkan Laporan',   'callback_data' => 'wizard:cancel_wizard'],
             ],
         ];
@@ -292,7 +289,6 @@ trait WizardStepHandlerTrait
                 "Kirim foto berikutnya, atau tekan *Selesai* untuk lanjut.",
             'keyboard' => [
                 ['text' => 'Selesai, Lanjutkan', 'callback_data' => 'wizard:confirm:photo_doc_done'],
-                ['text' => 'Skip Sisa',           'callback_data' => 'wizard:confirm:photo_doc_skip'],
                 ['text' => 'Batalkan Laporan',   'callback_data' => 'wizard:cancel_wizard'],
             ],
         ];
@@ -422,13 +418,27 @@ trait WizardStepHandlerTrait
             return $this->advanceToOvertime($chatId, $state);
         }
 
-        if (is_numeric($text) && (int) $text >= 0) {
-            $state['downtime_minutes'] = (int) $text;
+        // Ambil angka dari teks: "30 menit", "120", "2 jam" dll
+        $minutes = null;
+        if (preg_match('/^(\d+(?:[.,]\d+)?)\s*(?:menit|mnt|jam)?$/i', $text, $m)) {
+            $val = (float) str_replace(',', '.', $m[1]);
+            // Jika teks mengandung "jam", konversi ke menit
+            if (str_contains($text, 'jam')) {
+                $minutes = (int) ($val * 60);
+            } else {
+                $minutes = (int) $val;
+            }
+        } elseif (is_numeric($text)) {
+            $minutes = (int) $text;
+        }
+
+        if ($minutes !== null && $minutes >= 0) {
+            $state['downtime_minutes'] = $minutes;
             return $this->advanceToOvertime($chatId, $state);
         }
 
         return [
-            'message'  => "Masukkan angka menit downtime (contoh: `30`, `120`),\n" .
+            'message'  => "Masukkan downtime (contoh: `30`, `120`, `30 menit`, `1 jam`),\n" .
                 "atau pilih *Tidak Ada Downtime*.",
             'keyboard' => [
                 ['text' => 'Tidak Ada Downtime', 'callback_data' => 'wizard:confirm:downtime_0'],
@@ -495,16 +505,24 @@ trait WizardStepHandlerTrait
             return $this->advanceFromOvertime($chatId, $state);
         }
 
-        if (is_numeric($text) && (float) $text > 0 && (float) $text <= 24) {
+        // Ambil angka dari teks: "3 jam", "2.5 jam", "4", dll
+        $value = null;
+        if (preg_match('/^(\d+(?:[.,]\d+)?)\s*jam/i', $text, $m)) {
+            $value = (float) str_replace(',', '.', $m[1]);
+        } elseif (is_numeric($text)) {
+            $value = (float) $text;
+        }
+
+        if ($value !== null && $value > 0 && $value <= 24) {
             $state['is_overtime'] = true;
-            $state['overtime_hours'] = (float) $text;
+            $state['overtime_hours'] = $value;
             return $this->advanceFromOvertime($chatId, $state);
         }
 
         return [
             'message'  => "Masukkan jam lembur (angka, maks 24 jam).\n" .
                 "Ketik jumlah jam, atau pilih *Tidak Lembur*.\n\n" .
-                "Contoh: `1`, `2.5`, `4`",
+                "Contoh: `1`, `2.5`, `4`, `3 jam`",
             'keyboard' => [
                 ['text' => 'Tidak Lembur',       'callback_data' => 'wizard:confirm:overtime_0'],
                 ['text' => 'Batalkan Laporan',   'callback_data' => 'wizard:cancel_wizard'],

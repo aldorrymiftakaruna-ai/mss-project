@@ -62,15 +62,41 @@
                 Karyawan
             </a>
 
-            <p class="text-white/25 text-[10px] uppercase tracking-widest px-2 mt-4 mb-2">Analitik</p>
+                        <p class="text-white/25 text-[10px] uppercase tracking-widest px-2 mt-4 mb-2">Analitik & DSS</p>
 
-            <a href="{{ route('dss.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('dss.*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                Decision Support System
+            <a href="{{ route('dss.integrated') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('dss.integrated*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1v-2zm0 8a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1v-2z"/></svg>
+                DSS Terintegrasi
             </a>
-                        <p class="text-white/25 text-[10px] uppercase tracking-widest px-2 mt-4 mb-2">Sistem</p>
 
-                        <a href="{{ route('ai-providers.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('ai-providers.*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
+            <a href="{{ route('ahp.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('ahp.*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+                AHP + TOPSIS
+            </a>
+
+            <a href="{{ route('predictive.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('predictive.*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                                Predictive Risk
+            </a>
+
+            <a href="{{ route('weibull.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('weibull.*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/></svg>
+                Weibull Reliability
+            </a>
+
+            <a href="{{ route('forecast.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('forecast.*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                Forecasting
+            </a>
+
+            <a href="{{ route('cost.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('cost.*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Analisis Biaya
+            </a>
+
+                                    <p class="text-white/25 text-[10px] uppercase tracking-widest px-2 mt-4 mb-2">Sistem</p>
+
+            <a href="{{ route('ai-providers.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('ai-providers.*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                 AI Providers
             </a>

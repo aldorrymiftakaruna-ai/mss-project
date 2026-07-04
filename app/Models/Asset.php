@@ -39,6 +39,11 @@ class Asset extends Model
         return $this->hasMany(CmFinding::class)->latest('tanggal');
     }
 
+    public function riskScores()
+    {
+        return $this->hasMany(RiskScore::class);
+    }
+
     public function statusColor(): string
     {
         return match($this->status) {

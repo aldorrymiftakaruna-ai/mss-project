@@ -12,6 +12,12 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\AiProviderController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\BotController;
+use App\Http\Controllers\AhpController;
+use App\Http\Controllers\PredictiveController;
+use App\Http\Controllers\CostController;
+use App\Http\Controllers\ForecastController;
+use App\Http\Controllers\IntegratedDssController;
+use App\Http\Controllers\WeibullController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -57,8 +63,49 @@ Route::middleware('admin')->group(function () {
     Route::get('/spareparts/update-stok', [SparePartController::class, 'updateStokForm'])->name('spareparts.updateStok.form');
     Route::post('/spareparts/update-stok', [SparePartController::class, 'updateStok'])->name('spareparts.updateStok');
     Route::resource('spareparts', SparePartController::class);
-    Route::resource('employees', EmployeeController::class);
-    Route::get('/dss', [DssController::class, 'index'])->name('dss.index');
+        Route::resource('employees', EmployeeController::class);
+    // DSS deskriptif dialihkan ke dashboard (informasi sudah digabung)
+    Route::get('/dss', function () {
+        return redirect()->route('dashboard');
+    })->name('dss.index');
+
+    // DSS Terintegrasi (Waterfall)
+    Route::get('/dss/integrated', [IntegratedDssController::class, 'index'])->name('dss.integrated');
+    Route::post('/dss/integrated/recalculate', [IntegratedDssController::class, 'recalculate'])->name('dss.integrated.recalculate');
+
+    // AHP + TOPSIS
+    Route::get('/ahp', [AhpController::class, 'index'])->name('ahp.index');
+    Route::get('/ahp/create', [AhpController::class, 'create'])->name('ahp.create');
+    Route::post('/ahp', [AhpController::class, 'store'])->name('ahp.store');
+    Route::get('/ahp/{ahpSession}/pairwise', [AhpController::class, 'pairwise'])->name('ahp.pairwise');
+    Route::post('/ahp/{ahpSession}/pairwise', [AhpController::class, 'storePairwise'])->name('ahp.storePairwise');
+    Route::get('/ahp/{ahpSession}/result', [AhpController::class, 'result'])->name('ahp.result');
+    Route::get('/ahp/{ahpSession}/ranking', [AhpController::class, 'ranking'])->name('ahp.ranking');
+            Route::delete('/ahp/{ahpSession}', [AhpController::class, 'destroy'])->name('ahp.destroy');
+
+            // Predictive Risk
+    Route::get('/predictive', [PredictiveController::class, 'index'])->name('predictive.index');
+    Route::get('/predictive/{asset}', [PredictiveController::class, 'detail'])->name('predictive.detail');
+    Route::post('/predictive/recalculate', [PredictiveController::class, 'recalculate'])->name('predictive.recalculate');
+        Route::post('/predictive/{asset}/recalculate', [PredictiveController::class, 'recalculateAsset'])->name('predictive.recalculate-asset');
+
+    // Weibull Reliability
+    Route::get('/weibull', [WeibullController::class, 'index'])->name('weibull.index');
+    Route::get('/weibull/{asset}', [WeibullController::class, 'detail'])->name('weibull.detail');
+    Route::post('/weibull/calculate-all', [WeibullController::class, 'calculateAll'])->name('weibull.calculate-all');
+    Route::post('/weibull/{asset}/calculate', [WeibullController::class, 'calculateAsset'])->name('weibull.calculate-asset');
+
+    // Forecasting
+    Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast.index');
+    Route::get('/forecast/calculate', [ForecastController::class, 'calculate'])->name('forecast.calculate');
+
+    // Cost Analysis
+    Route::get('/cost', [CostController::class, 'index'])->name('cost.index');
+    Route::get('/cost/settings', [CostController::class, 'settings'])->name('cost.settings');
+    Route::post('/cost/rates', [CostController::class, 'updateRates'])->name('cost.rates.update');
+    Route::get('/cost/reanalyze-all', [CostController::class, 'reanalyzeAll'])->name('cost.reanalyze-all');
+    Route::get('/cost/reanalyze/{reportId}', [CostController::class, 'reanalyze'])->name('cost.reanalyze');
+
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
     Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
 

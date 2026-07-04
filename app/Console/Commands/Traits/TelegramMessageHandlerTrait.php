@@ -37,7 +37,7 @@ trait TelegramMessageHandlerTrait
      *
      * Urutan routing:
      *   1. /start command
-     *   2. NIK registration (pola "NIK 123456")
+     *   2. Registrasi (waiting_name / waiting_jabatan)
      *   3. Validasi employee terdaftar & aktif (berdasarkan telegram_id)
      *   4. Foto -> handlePhotoMessage
      *   5. Teks: wizard aktif -> handleWizardText, selain itu -> handleReport
@@ -65,9 +65,19 @@ trait TelegramMessageHandlerTrait
             return;
         }
 
-        // Handle NIK registration
-        if (preg_match('/^NIK\s+(\S+)$/i', $text, $matches)) {
-            $this->handleNikRegistration($chatId, $telegramId, $matches[1]);
+        // Cek apakah user sedang dalam proses registrasi
+        $pendingReg = BotRegistration::where('telegram_id', $telegramId)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($pendingReg && $pendingReg->step === 'waiting_name') {
+            $this->handleNameInput($chatId, $pendingReg, $text);
+            return;
+        }
+
+        if ($pendingReg && $pendingReg->step === 'waiting_jabatan') {
+            $this->handleJabatanInput($chatId, $pendingReg, $text);
             return;
         }
 
@@ -77,7 +87,7 @@ trait TelegramMessageHandlerTrait
             ->first();
 
         if (!$employee) {
-            $this->sendMessage($chatId, 'Maaf, akun kamu belum terdaftar atau belum disetujui. Silakan hubungi admin.');
+            $this->sendMessage($chatId, 'Harap menunggu persetujuan admin sebelum melakukan reporting.');
             return;
         }
 
@@ -255,8 +265,8 @@ trait TelegramMessageHandlerTrait
      * Alur:
      *   - Jika sudah terdaftar & aktif -> sambut
      *   - Jika sudah terdaftar & tidak aktif -> beri tahu status
-     *   - Jika ada pendaftaran pending -> beri tahu masih diproses
-     *   - Jika belum ada -> buat BotRegistration pending dan minta NIK
+     *   - Jika ada pendaftaran pending -> hapus (buat ulang)
+     *   - Jika belum ada -> buat BotRegistration step=waiting_name, tanya nama
      *
      * @param int|string  $chatId     ID chat
      * @param string      $telegramId Telegram user ID
@@ -270,7 +280,6 @@ trait TelegramMessageHandlerTrait
         ?string $username,
         string $firstName
     ): void {
-        // Cari di Employee berdasarkan telegram_id
         $employee = Employee::where('telegram_id', $telegramId)->first();
 
         if ($employee) {
@@ -282,26 +291,67 @@ trait TelegramMessageHandlerTrait
             return;
         }
 
-        $pending = BotRegistration::where('telegram_id', $telegramId)
+        // Hapus registrasi pending sebelumnya
+        BotRegistration::where('telegram_id', $telegramId)
             ->where('status', 'pending')
-            ->first();
-
-        if ($pending) {
-            $this->sendMessage($chatId, "Pendaftaran kamu masih diproses. Silakan tunggu konfirmasi dari admin.");
-            return;
-        }
+            ->delete();
 
         BotRegistration::create([
             'telegram_id'       => $telegramId,
             'telegram_username' => $username,
             'name'              => $firstName,
             'status'            => 'pending',
+            'step'              => 'waiting_name',
         ]);
 
-        $this->sendMessage(
-            $chatId,
-            "Halo $firstName! Untuk mendaftar sebagai teknisi, silakan kirim NIK kamu.\n\nContoh: NIK 123456"
-        );
+        $this->sendMessage($chatId, "Halo! Silakan kirim *nama lengkap* kamu.");
+    }
+
+    /**
+     * Handle input nama — simpan, lalu tanya jabatan.
+     */
+    private function handleNameInput(int|string $chatId, BotRegistration $registration, string $name): void
+    {
+        $name = trim($name);
+        if (strlen($name) < 2) {
+            $this->sendMessage($chatId, 'Nama terlalu pendek. Silakan kirim nama lengkap kamu.');
+            return;
+        }
+
+        $registration->update([
+            'name' => $name,
+            'step' => 'waiting_jabatan',
+        ]);
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [['text' => 'Teknisi', 'callback_data' => 'jabatan:teknisi']],
+                [['text' => 'Foreman', 'callback_data' => 'jabatan:foreman']],
+                [['text' => 'Supervisor', 'callback_data' => 'jabatan:supervisor']],
+            ]
+        ];
+        $this->sendMessageWithKeyboard($chatId, "Terima kasih *{$name}*! Pilih jabatan kamu:", $keyboard);
+    }
+
+    /**
+     * Handle input jabatan — simpan, lalu selesai.
+     */
+    private function handleJabatanInput(int|string $chatId, BotRegistration $registration, string $jabatan): void
+    {
+        $jabatan = strtolower(trim($jabatan));
+        $valid = ['teknisi', 'foreman', 'supervisor'];
+
+        if (!in_array($jabatan, $valid)) {
+            $this->sendMessage($chatId, 'Jabatan tidak valid. Pilih salah satu: Teknisi, Foreman, atau Supervisor.');
+            return;
+        }
+
+        $registration->update([
+            'requested_jabatan' => $jabatan,
+            'step'              => null,
+        ]);
+
+        $this->sendMessage($chatId, 'Pendaftaran kamu sudah diterima. Silakan tunggu persetujuan dari admin.');
     }
 
     /**

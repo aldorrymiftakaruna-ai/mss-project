@@ -57,6 +57,11 @@ class MaintenanceReport extends Model
         return $this->hasMany(ManpowerLog::class);
     }
 
+    public function costAnalysis()
+    {
+        return $this->hasOne(CostAnalysis::class);
+    }
+
     /**
      * Accessor: array URL publik foto dokumentasi.
      * Disk diambil dari config('telegram.photo_disk') agar selalu sinkron

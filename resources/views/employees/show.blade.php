@@ -43,10 +43,6 @@
                     <span class="text-gray-600 capitalize">{{ $employee->shift ?? '—' }}</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-400">Perusahaan</span>
-                    <span class="text-gray-600">{{ $employee->company->name ?? '—' }}</span>
-                </div>
-                <div class="flex justify-between">
                     <span class="text-gray-400">Telegram</span>
                     <span class="text-gray-600">
                         @if($employee->telegram_username)

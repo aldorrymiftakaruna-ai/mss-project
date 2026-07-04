@@ -246,7 +246,7 @@
                     <tr class="bg-gray-50 border-b border-gray-100">
                         <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Nama</th>
                         <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Telegram ID / Username</th>
-                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">NIK</th>
+                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Jabatan</th>
                         <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Status</th>
                         <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Diminta</th>
                         <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-5 py-3">Diproses Oleh</th>
@@ -266,7 +266,9 @@
                                     @endif
                                 </span>
                             </td>
-                            <td class="px-5 py-3 text-xs text-gray-600">{{ $reg->nik ?? '-' }}</td>
+                            <td class="px-5 py-3 text-xs text-gray-600">
+                                {{ $reg->requested_jabatan ? ucfirst($reg->requested_jabatan) : '-' }}
+                            </td>
                             <td class="px-5 py-3">
                                 @if($reg->status === 'pending')
                                     <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">Pending</span>
