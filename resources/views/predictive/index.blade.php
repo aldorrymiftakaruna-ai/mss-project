@@ -4,6 +4,19 @@
 @section('page-title', 'Predictive Risk')
 @section('page-sub', '— Trend-based risk scoring per equipment')
 
+@push('header-actions')
+<x-info-tooltip title="Bagaimana Skor Risiko Dihitung?">
+    <ul class="list-disc pl-4 space-y-1">
+        <li>Skor risiko dihitung berdasarkan tren historis data vibrasi dan temperatur tiap equipment menggunakan <strong>Linear Regression</strong>.</li>
+        <li>Slope (kemiringan tren) dari vibrasi (Slope Vib) dan temperatur (Slope Temp) dihitung dari data condition monitoring / history sensor per equipment.</li>
+        <li>Slope positif besar menunjukkan tren memburuk (risiko naik).</li>
+        <li>Skor akhir (0&ndash;1) merupakan hasil normalisasi/kombinasi dari slope-slope tersebut, lalu dikategorikan menjadi <strong>Rendah / Sedang / Tinggi</strong> berdasarkan threshold tertentu.</li>
+        <li><strong>Sumber data:</strong> histori pembacaan condition monitoring (vibrasi &amp; temperatur) per equipment, diambil dari record maintenance/monitoring terbaru.</li>
+        <li>Tombol <strong>&ldquo;Hitung Ulang&rdquo;</strong> akan menjalankan ulang regresi menggunakan data terbaru yang tersedia.</li>
+    </ul>
+</x-info-tooltip>
+@endpush
+
 @section('content')
 <div class="mb-5 flex items-center justify-between">
     <div>

@@ -4,6 +4,20 @@
 @section('page-title', 'Weibull Reliability')
 @section('page-sub', 'Analisis parameter Weibull (β, η, MTTF) untuk setiap asset')
 
+@push('header-actions')
+<x-info-tooltip title="Bagaimana Parameter Weibull Dihitung?">
+    <ul class="list-disc pl-4 space-y-1">
+        <li>Parameter Weibull (β/shape, η/scale) diestimasi menggunakan metode <strong>Median Rank Regression (MRR)</strong> berdasarkan data waktu antar kerusakan (time-to-failure) dari histori maintenance corrective (CM) tiap asset.</li>
+        <li><strong>β (shape)</strong> &gt; 1 mengindikasikan pola kegagalan <em>wear-out</em> (aus/menua), β = 1 menunjukkan kegagalan acak, β &lt; 1 menunjukkan <em>infant mortality</em>.</li>
+        <li><strong>η (scale)</strong> merepresentasikan karakteristik umur pakai.</li>
+        <li><strong>MTTF</strong> (Mean Time To Failure) dihitung dari parameter β dan η.</li>
+        <li>Reliabilitas pada periode tertentu (misal 30 hari) dihitung dari fungsi reliabilitas Weibull: <em>R(t) = exp(-(t/η)<sup>β</sup>)</em>.</li>
+        <li><strong>Sumber data:</strong> histori corrective maintenance (tanggal kerusakan) per asset; jika data CM kurang, hasil estimasi dapat tidak akurat (ditandai dengan reliabilitas rendah).</li>
+        <li>Tombol <strong>&ldquo;Hitung Semua&rdquo;</strong> menjalankan ulang estimasi untuk semua asset menggunakan data histori CM terbaru.</li>
+    </ul>
+</x-info-tooltip>
+@endpush
+
 @section('content')
 <div class="space-y-6">
     {{-- Flash messages --}}

@@ -4,6 +4,18 @@
 @section('page-title', 'AHP Prioritas')
 @section('page-sub', '— Analytic Hierarchy Process')
 
+@push('header-actions')
+<x-info-tooltip title="Bagaimana AHP + TOPSIS Bekerja?">
+    <ul class="list-disc pl-4 space-y-1">
+        <li><strong>AHP</strong> (Analytic Hierarchy Process) digunakan untuk menentukan bobot kriteria berdasarkan perbandingan berpasangan (pairwise comparison) yang diinput user pada tiap sesi.</li>
+        <li>Setiap sesi berisi beberapa kriteria yang dibandingkan satu-lawan-satu menggunakan skala 1&ndash;9 (skala Saaty).</li>
+        <li>Sistem menghitung <strong>Consistency Ratio (CR)</strong> untuk memastikan konsistensi penilaian; CR &lt; 0,1 dianggap &ldquo;Konsisten&rdquo;.</li>
+        <li>Bobot kriteria hasil AHP kemudian dipakai sebagai input ke metode <strong>TOPSIS</strong> untuk meranking alternatif (equipment) berdasarkan kedekatannya terhadap solusi ideal.</li>
+        <li>Data yang digunakan: input pairwise comparison dari user (session AHP) + data atribut equipment terkait kriteria yang dinilai.</li>
+    </ul>
+</x-info-tooltip>
+@endpush
+
 @section('content')
 <div class="mb-5 flex items-center justify-between">
     <div>

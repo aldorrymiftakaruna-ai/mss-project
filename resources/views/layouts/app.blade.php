@@ -66,7 +66,7 @@
 
             <a href="{{ route('dss.integrated') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('dss.integrated*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1v-2zm0 8a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1v-2z"/></svg>
-                DSS Terintegrasi
+                DSS Insight
             </a>
 
             <a href="{{ route('ahp.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition {{ request()->routeIs('ahp.*') ? 'bg-[#0E9E8E]/20 text-[#12B5A3]' : '' }}">
@@ -119,7 +119,10 @@
         {{-- Topbar --}}
         <header class="bg-white border-b border-gray-200 px-7 py-4 flex items-center gap-4 sticky top-0 z-40">
             <div>
-                <h1 class="text-base font-bold text-gray-900">@yield('page-title', 'Dashboard')</h1>
+                                <div class="flex items-center gap-2">
+                    <h1 class="text-base font-bold text-gray-900">@yield('page-title', 'Dashboard')</h1>
+                    @stack('header-actions')
+                </div>
                 <p class="text-xs text-gray-500">@yield('page-sub', '')</p>
             </div>
             <div class="ml-auto text-xs text-gray-400">{{ now()->translatedFormat('l, d M Y') }}</div>
@@ -133,5 +136,48 @@
 
 </body>
 @stack('scripts')
+<script>
+(function() {
+    // Info Tooltip — toggle with hover + click
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.info-tooltip-btn');
+        if (btn) {
+            e.preventDefault();
+            var container = btn.closest('.info-tooltip');
+            var body = container.querySelector('.info-tooltip-body');
+            var isOpen = !body.classList.contains('hidden');
+            // Tutup semua tooltip lain
+            document.querySelectorAll('.info-tooltip-body').forEach(function(el) {
+                el.classList.add('hidden');
+            });
+            if (!isOpen) {
+                body.classList.remove('hidden');
+            }
+        } else {
+            // Tutup jika klik di luar tooltip
+            document.querySelectorAll('.info-tooltip-body').forEach(function(el) {
+                if (!el.closest('.info-tooltip').contains(e.target)) {
+                    el.classList.add('hidden');
+                }
+            });
+        }
+    });
+    // Hover
+    document.addEventListener('mouseover', function(e) {
+        var container = e.target.closest('.info-tooltip');
+        if (container) {
+            var body = container.querySelector('.info-tooltip-body');
+            body.classList.remove('hidden');
+        }
+    });
+    document.addEventListener('mouseout', function(e) {
+        var container = e.target.closest('.info-tooltip');
+        if (container && !container.contains(e.relatedTarget)) {
+            var body = container.querySelector('.info-tooltip-body');
+            body.classList.add('hidden');
+        }
+    });
+})();
+</script>
 </html>
 
