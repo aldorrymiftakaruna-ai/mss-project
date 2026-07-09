@@ -17,9 +17,11 @@ return new class extends Migration
             $table->string('recommendation_type');
             $table->decimal('priority_score', 8, 3)->default(0);
             $table->text('description')->nullable();
+            $table->timestamp('generated_at')->nullable();
             $table->timestamps();
 
             $table->index(['asset_id', 'priority_score']);
+            $table->index('generated_at');
         });
     }
 

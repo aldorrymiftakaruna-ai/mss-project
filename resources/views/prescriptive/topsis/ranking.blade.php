@@ -33,22 +33,34 @@
     </div>
 @else
     {{-- RINGKASAN --}}
+    @php
+        $rankedCount = count($result['rankings']);
+        $noDataCount = isset($result['assets_no_data']) ? count($result['assets_no_data']) : 0;
+        $totalCount  = $rankedCount + $noDataCount;
+    @endphp
     <div class="grid grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-xl p-5 border border-gray-200">
             <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Equipment Dinilai</div>
-            <div class="text-2xl font-bold text-gray-900">{{ count($result['rankings']) }}</div>
+            <div class="text-2xl font-bold text-gray-900">{{ $rankedCount }}</div>
+            @if($noDataCount > 0)
+            <p class="text-xs text-amber-600 mt-1">{{ $noDataCount }} tanpa data CM (tidak di-ranking)</p>
+            @endif
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-200">
             <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Kriteria</div>
             <div class="text-2xl font-bold text-gray-900">{{ $result['criteria']->count() }}</div>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-200">
-            <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Skor Tertinggi</div>
-            <div class="text-2xl font-bold text-[#0E9E8E]">{{ $result['rankings'] ? number_format($result['rankings'][0]['score'], 4) : '—' }}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Prioritas Teratas</div>
+            @php $top = $result['rankings'][0] ?? null; @endphp
+            <div class="text-lg font-bold text-red-600 truncate">{{ $top ? $top['tag_no'] : '—' }}</div>
+            <p class="text-xs text-gray-400 mt-0.5">Skor {{ $top ? number_format($top['score'], 4) : '—' }}</p>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-200">
-            <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Skor Terendah</div>
-            <div class="text-2xl font-bold text-gray-600">{{ $result['rankings'] ? number_format($result['rankings'][count($result['rankings'])-1]['score'], 4) : '—' }}</div>
+            <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Prioritas Terbawah</div>
+            @php $last = $result['rankings'][count($result['rankings'])-1] ?? null; @endphp
+            <div class="text-lg font-bold text-green-600 truncate">{{ $last ? $last['tag_no'] : '—' }}</div>
+            <p class="text-xs text-gray-400 mt-0.5">Skor {{ $last ? number_format($last['score'], 4) : '—' }}</p>
         </div>
     </div>
 
@@ -72,7 +84,7 @@
                 <tbody class="divide-y divide-gray-50">
                     @foreach($result['rankings'] as $r)
                     @php
-                        $medal = $r['ranking'] == 1 ? '🥇' : ($r['ranking'] == 2 ? '🥈' : ($r['ranking'] == 3 ? '🥉' : ''));
+                        $medal = '';
                         $rowBg = $r['ranking'] <= 3 ? 'bg-amber-50/50' : '';
                     @endphp
                     <tr class="{{ $rowBg }} hover:bg-gray-50/50">
@@ -81,7 +93,7 @@
                         <td class="px-4 py-3 text-gray-800">{{ $r['description'] }}</td>
                         <td class="px-4 py-3 text-right font-mono text-xs text-gray-500">{{ number_format($r['distance_positive'], 4) }}</td>
                         <td class="px-4 py-3 text-right font-mono text-xs text-gray-500">{{ number_format($r['distance_negative'], 4) }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-sm font-bold {{ $r['ranking'] == 1 ? 'text-[#0E9E8E]' : 'text-gray-700' }}">
+                        <td class="px-4 py-3 text-right font-mono text-sm font-bold {{ $r['ranking'] == 1 ? 'text-red-600' : 'text-gray-700' }}">
                             {{ number_format($r['score'], 4) }}
                         </td>
                     </tr>
@@ -90,6 +102,46 @@
             </table>
         </div>
     </div>
+
+    {{-- ASSET TANPA DATA CM --}}
+    @if(isset($result['assets_no_data']) && count($result['assets_no_data']) > 0)
+    <div class="mt-5 bg-white rounded-xl border border-amber-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-amber-100 bg-amber-50 flex items-center gap-3">
+            <svg class="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+            </svg>
+            <div>
+                <h2 class="font-semibold text-amber-800 text-sm">Belum Ada Data CM</h2>
+                <p class="text-xs text-amber-600">{{ count($result['assets_no_data']) }} equipment tidak memiliki catatan <em>condition monitoring</em> (temuan/finding atau measurement) sama sekali. Equipment berikut tidak diikutsertakan dalam ranking karena belum ada data yang bisa dinilai.</p>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-xs text-gray-500 uppercase border-b border-gray-100 bg-gray-50">
+                        <th class="text-left px-4 py-3">Tag No</th>
+                        <th class="text-left px-4 py-3">Equipment</th>
+                        <th class="text-left px-4 py-3 text-amber-600 font-normal">Status Data</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @foreach($result['assets_no_data'] as $nad)
+                    <tr class="hover:bg-amber-50/30">
+                        <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $nad['tag_no'] }}</td>
+                        <td class="px-4 py-3 text-gray-800">{{ $nad['description'] }}</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01"/></svg>
+                                Data CM belum tersedia
+                            </span>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
     {{-- DATA MATRIKS (collapsible) --}}
     <div class="mt-5 bg-white rounded-xl border border-gray-200">
@@ -152,7 +204,11 @@
                             <p class="text-xs font-medium text-green-600 mb-1">Ideal Positif (A+)</p>
                             <div class="space-y-0.5">
                                 @foreach($result['ideal']['positive'] as $name => $val)
-                                <span class="text-xs text-gray-600 block">{{ $name }}: {{ number_format($val, 4) }}</span>
+                                @php
+                                    $cObj = $result['criteria']->firstWhere('name', $name);
+                                    $label = $cObj->label ?? $cObj->name ?? $name;
+                                @endphp
+                                <span class="text-xs text-gray-600 block">{{ $label }}: {{ number_format($val, 4) }}</span>
                                 @endforeach
                             </div>
                         </div>
@@ -160,7 +216,11 @@
                             <p class="text-xs font-medium text-red-600 mb-1">Ideal Negatif (A-)</p>
                             <div class="space-y-0.5">
                                 @foreach($result['ideal']['negative'] as $name => $val)
-                                <span class="text-xs text-gray-600 block">{{ $name }}: {{ number_format($val, 4) }}</span>
+                                @php
+                                    $cObj = $result['criteria']->firstWhere('name', $name);
+                                    $label = $cObj->label ?? $cObj->name ?? $name;
+                                @endphp
+                                <span class="text-xs text-gray-600 block">{{ $label }}: {{ number_format($val, 4) }}</span>
                                 @endforeach
                             </div>
                         </div>

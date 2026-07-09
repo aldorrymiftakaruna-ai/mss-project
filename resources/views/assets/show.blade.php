@@ -60,18 +60,18 @@
         <h2 class="font-semibold text-gray-800">MTBF — Mean Time Between Failures</h2>
         <span class="text-xs text-gray-400">per tag</span>
     </div>
-    @if($mtbf->total_laporan < 2)
+    @if(!$mtbf->ada_data)
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm text-gray-500">Minimal 2 laporan maintenance diperlukan untuk perhitungan MTBF.</p>
-                <p class="text-xs text-gray-400 mt-1">Total laporan: {{ $mtbf->total_laporan }}</p>
+                <p class="text-sm text-gray-500">Belum ada data kegagalan</p>
+                <p class="text-xs text-gray-400 mt-1">Tidak ada laporan corrective maintenance untuk equipment ini.</p>
             </div>
             <div class="text-right">
                 <span class="text-3xl font-bold text-gray-300">—</span>
                 <p class="text-xs text-gray-400 mt-0.5">hari</p>
             </div>
         </div>
-    @else
+    @elseif($mtbf->data_terbatas)
         @php
             $barColor = $mtbf->mtbf_hari < 30 ? 'bg-red-500' : ($mtbf->mtbf_hari < 90 ? 'bg-amber-500' : 'bg-[#0E9E8E]');
             $labelColor = $mtbf->mtbf_hari < 30 ? 'text-red-600' : ($mtbf->mtbf_hari < 90 ? 'text-amber-600' : 'text-[#0E9E8E]');
@@ -81,10 +81,11 @@
             <div>
                 <span class="text-3xl font-bold {{ $labelColor }}">{{ number_format($mtbf->mtbf_hari, 1) }} hari</span>
                 <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium {{ $mtbf->mtbf_hari < 30 ? 'bg-red-100 text-red-700' : ($mtbf->mtbf_hari < 90 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700') }}">{{ $statusLabel }}</span>
+                <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Data Terbatas</span>
             </div>
             <div class="text-right text-xs text-gray-400">
-                <div>{{ $mtbf->total_laporan }} laporan</div>
-                <div>Periode: {{ optional($mtbf->first_report)->format('d M Y') ?? '—' }} &ndash; {{ optional($mtbf->last_report)->format('d M Y') ?? '—' }}</div>
+                <div>{{ $mtbf->total_laporan }} laporan corrective</div>
+                <div>Periode: {{ optional($mtbf->first_report)->format('d M Y') ?? '—' }} &ndash; sekarang</div>
             </div>
         </div>
         <div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
@@ -97,7 +98,35 @@
             <span>180 hari</span>
         </div>
         <p class="text-[10px] text-gray-400 mt-2">
-            MTBF = rata-rata selisih hari antar laporan maintenance. Semakin besar angkanya, semakin jarang equipment mengalami kegagalan.
+            MTBF diperkirakan dari 1 laporan corrective saja — data masih terbatas, akurasi akan meningkat seiring bertambahnya laporan kegagalan.
+        </p>
+    @else
+        @php
+            $barColor = $mtbf->mtbf_hari < 30 ? 'bg-red-500' : ($mtbf->mtbf_hari < 90 ? 'bg-amber-500' : 'bg-[#0E9E8E]');
+            $labelColor = $mtbf->mtbf_hari < 30 ? 'text-red-600' : ($mtbf->mtbf_hari < 90 ? 'text-amber-600' : 'text-[#0E9E8E]');
+            $statusLabel = $mtbf->mtbf_hari < 30 ? 'Kritis' : ($mtbf->mtbf_hari < 90 ? 'Perlu Perhatian' : 'Normal');
+        @endphp
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <span class="text-3xl font-bold {{ $labelColor }}">{{ number_format($mtbf->mtbf_hari, 1) }} hari</span>
+                <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium {{ $mtbf->mtbf_hari < 30 ? 'bg-red-100 text-red-700' : ($mtbf->mtbf_hari < 90 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700') }}">{{ $statusLabel }}</span>
+            </div>
+            <div class="text-right text-xs text-gray-400">
+                <div>{{ $mtbf->total_laporan }} laporan corrective</div>
+                <div>Periode: {{ optional($mtbf->first_report)->format('d M Y') ?? '—' }} &ndash; sekarang</div>
+            </div>
+        </div>
+        <div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full {{ $barColor }} transition-all" style="width: {{ min($mtbf->mtbf_hari / 1.8, 100) }}%;"></div>
+        </div>
+        <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+            <span>0 hari</span>
+            <span>30 hari (kritis)</span>
+            <span>90 hari (normal)</span>
+            <span>180 hari</span>
+        </div>
+        <p class="text-[10px] text-gray-400 mt-2">
+            MTBF = rata-rata selisih hari antar laporan corrective maintenance, termasuk periode berjalan sampai hari ini. Semakin besar angkanya, semakin jarang equipment mengalami kegagalan.
         </p>
     @endif
 </div>

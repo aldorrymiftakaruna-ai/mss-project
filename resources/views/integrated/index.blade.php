@@ -135,131 +135,7 @@
         @endif
     </div>
 
-    {{-- ========== BAGIAN 3: COST BREAKDOWN ========== --}}
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <div class="flex items-center gap-3 mb-4">
-            <span class="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
-                <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-            </span>
-            <h2 class="text-base font-bold text-gray-900">3. Cost — Analisis Biaya</h2>
-            <span class="text-xs text-gray-400 ml-auto">Kumulatif</span>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
-            <div class="bg-gray-50 rounded-lg p-3 text-center">
-                <p class="text-xs text-gray-500">Grand Total</p>
-                <p class="text-lg font-bold text-gray-900">Rp {{ number_format($costData['totals']['grand_total'], 0, ',', '.') }}</p>
-            </div>
-            <div class="bg-orange-50 rounded-lg p-3 text-center">
-                <p class="text-xs text-orange-500">Downtime</p>
-                <p class="text-lg font-bold text-orange-600">Rp {{ number_format($costData['totals']['total_downtime'], 0, ',', '.') }}</p>
-            </div>
-            <div class="bg-red-50 rounded-lg p-3 text-center">
-                <p class="text-xs text-red-500">Overtime</p>
-                <p class="text-lg font-bold text-red-600">Rp {{ number_format($costData['totals']['total_overtime'], 0, ',', '.') }}</p>
-            </div>
-            <div class="bg-blue-50 rounded-lg p-3 text-center">
-                <p class="text-xs text-blue-500">Tenaga Kerja</p>
-                <p class="text-lg font-bold text-blue-600">Rp {{ number_format($costData['totals']['total_labor'], 0, ',', '.') }}</p>
-            </div>
-            <div class="bg-purple-50 rounded-lg p-3 text-center">
-                <p class="text-xs text-purple-500">Sparepart</p>
-                <p class="text-lg font-bold text-purple-600">Rp {{ number_format($costData['totals']['total_sparepart'], 0, ',', '.') }}</p>
-            </div>
-        </div>
-
-        @if($costData['top_cost_assets']->isNotEmpty())
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b border-gray-200 text-left">
-                            <th class="pb-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Asset</th>
-                            <th class="pb-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Total Biaya</th>
-                            <th class="pb-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Kontribusi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php $grandTotal = $costData['totals']['grand_total'] ?: 1; @endphp
-                        @foreach($costData['top_cost_assets'] as $ca)
-                            <tr class="border-b border-gray-100">
-                                <td class="py-2 text-gray-900">{{ $ca->asset?->tag_no ?? '—' }}</td>
-                                <td class="py-2 text-gray-600">Rp {{ number_format($ca->total_cost, 0, ',', '.') }}</td>
-                                <td class="py-2">
-                                    @php $pct = ($ca->total_cost / $grandTotal) * 100; @endphp
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-24 bg-gray-200 rounded-full h-2">
-                                            <div class="bg-[#0E9E8E] h-2 rounded-full" style="width: {{ min($pct, 100) }}%"></div>
-                                        </div>
-                                        <span class="text-xs text-gray-500">{{ number_format($pct, 1) }}%</span>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-2">
-                <a href="{{ route('cost.index') }}" class="text-xs text-[#0E9E8E] hover:underline">Lihat analisis biaya lengkap →</a>
-            </div>
-        @else
-            <p class="text-sm text-gray-400 text-center py-4">
-                Belum ada data biaya. 
-                <a href="{{ route('cost.reanalyze-all') }}" class="text-[#0E9E8E] hover:underline">Analisis sekarang</a>.
-            </p>
-        @endif
-    </div>
-
-    {{-- ========== BAGIAN 4: FORECASTING ========== --}}
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <div class="flex items-center gap-3 mb-4">
-            <span class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
-                </svg>
-            </span>
-            <h2 class="text-base font-bold text-gray-900">4. Forecasting — Proyeksi Downtime</h2>
-            <span class="text-xs text-gray-400 ml-auto">Exponential Smoothing (α=0.3)</span>
-        </div>
-
-        @if($forecastData['forecast']->isNotEmpty())
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b border-gray-200 text-left">
-                            <th class="pb-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Periode</th>
-                            <th class="pb-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Actual (menit)</th>
-                            <th class="pb-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Forecast (menit)</th>
-                            <th class="pb-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Error</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($forecastData['forecast'] as $f)
-                            <tr class="border-b border-gray-100">
-                                <td class="py-2 font-medium text-gray-900">{{ $f->period }}</td>
-                                <td class="py-2 text-gray-600">{{ $f->actual !== null ? number_format($f->actual, 0) : '—' }}</td>
-                                <td class="py-2 text-gray-600">{{ $f->forecast !== null ? number_format($f->forecast, 0) : '—' }}</td>
-                                <td class="py-2 {{ $f->error !== null ? ($f->error >= 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-400' }}">
-                                    {{ $f->error !== null ? number_format($f->error, 0) : '—' }}
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-2">
-                <a href="{{ route('forecast.index') }}" class="text-xs text-[#0E9E8E] hover:underline">Lihat forecasting lengkap →</a>
-            </div>
-        @else
-            <p class="text-sm text-gray-400 text-center py-4">
-                Data historis belum mencukupi untuk forecasting.
-                <a href="{{ route('forecast.index') }}" class="text-[#0E9E8E] hover:underline">Atur parameter</a>.
-            </p>
-        @endif
-    </div>
-
-    {{-- ========== BAGIAN 5: REKOMENDASI FINAL ========== --}}
+    {{-- ========== BAGIAN 3: REKOMENDASI FINAL ========== --}}
     <div class="bg-white rounded-xl border-2 border-[#0E9E8E]/20 p-5">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
@@ -269,6 +145,14 @@
                     </svg>
                 </span>
                 <h2 class="text-base font-bold text-gray-900">5. Rekomendasi Final</h2>
+                <span class="text-xs text-gray-400 ml-auto">
+                    @php
+                        $lastGenerated = $recommendations->first()?->generated_at;
+                    @endphp
+                    @if($lastGenerated)
+                        Terakhir diperbarui: {{ $lastGenerated->format('d/m/Y H:i') }}
+                    @endif
+                </span>
             </div>
             <form method="POST" action="{{ route('dss.integrated.recalculate') }}" class="inline">
                 @csrf
@@ -368,8 +252,8 @@
 
     {{-- Keterangan --}}
     <div class="text-xs text-gray-400 text-center">
-        Waterfall Decision Support System — Menggabungkan output Predictive Risk Scoring, AHP/TOPSIS, 
-        Analisis Biaya, dan Forecasting untuk menghasilkan rekomendasi prioritas perawatan.
+        Waterfall Decision Support System — Menggabungkan output Predictive Risk Scoring dan AHP/TOPSIS 
+        untuk menghasilkan rekomendasi prioritas perawatan.
     </div>
 </div>
 @endsection

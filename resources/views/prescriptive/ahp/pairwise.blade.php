@@ -51,7 +51,9 @@
                                 <td class="px-4 py-2.5 font-medium text-gray-800">{{ $cA->label ?? $cA->name }}</td>
                                 <td class="px-4 py-2.5 text-center">
                                     <select name="pairwise[{{ $key }}]"
-                                        class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 w-20 text-center focus:outline-none focus:ring-2 focus:ring-[#0E9E8E]/30 focus:border-[#0E9E8E]">
+                                        data-ca="{{ $cA->label ?? $cA->name }}"
+                                        data-cb="{{ $cB->label ?? $cB->name }}"
+                                        class="pairwise-select text-xs border border-gray-200 rounded-lg px-2 py-1.5 w-20 text-center focus:outline-none focus:ring-2 focus:ring-[#0E9E8E]/30 focus:border-[#0E9E8E]">
                                         <option value="9" {{ $currentValue == 9 ? 'selected' : '' }}>9</option>
                                         <option value="8" {{ $currentValue == 8 ? 'selected' : '' }}>8</option>
                                         <option value="7" {{ $currentValue == 7 ? 'selected' : '' }}>7</option>
@@ -72,19 +74,26 @@
                                     </select>
                                 </td>
                                 <td class="px-4 py-2.5 font-medium text-gray-800">{{ $cB->label ?? $cB->name }}</td>
-                                <td class="px-4 py-2.5 text-xs text-gray-400">
+                                <td class="px-4 py-2.5 text-xs text-gray-500 keterangan-cell">
                                     @php
                                         $val = (float) $currentValue;
                                         $aLabel = $cA->label ?? $cA->name;
                                         $bLabel = $cB->label ?? $cB->name;
+
+                                        // Mapping level kepentingan
+                                        $levelMap = [1=>'sama penting', 2=>'sedikit lebih penting', 3=>'sedikit lebih penting', 4=>'lebih penting', 5=>'lebih penting', 6=>'jauh lebih penting', 7=>'jauh lebih penting', 8=>'mutlak/ekstrem lebih penting', 9=>'mutlak/ekstrem lebih penting'];
+
+                                        if ($val == 1) {
+                                            $keterangan = "{$aLabel} sama penting dengan {$bLabel}";
+                                        } elseif ($val > 1) {
+                                            $lvl = $levelMap[(int) round($val)] ?? 'lebih penting';
+                                            $keterangan = "{$aLabel} {$lvl} dari {$bLabel}";
+                                        } else {
+                                            $lvl = $levelMap[(int) round(1 / $val)] ?? 'lebih penting';
+                                            $keterangan = "{$bLabel} {$lvl} dari {$aLabel}";
+                                        }
                                     @endphp
-                                    @if($val == 1)
-                                        {{ $aLabel }} sama penting dengan {{ $bLabel }}
-                                    @elseif($val > 1)
-                                        {{ $aLabel }} {{ \App\Services\Prescriptive\AhpService::SAATY_SCALE[(int)$val] ?? 'lebih penting' }} dari {{ $bLabel }}
-                                    @else
-                                        {{ $bLabel }} {{ \App\Services\Prescriptive\AhpService::SAATY_SCALE[(int)(1/$val)] ?? 'lebih penting' }} dari {{ $aLabel }}
-                                    @endif
+                                    {{ $keterangan }}
                                 </td>
                             </tr>
                         @endfor
@@ -105,3 +114,103 @@
     </form>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+/**
+ * Mapping keterangan skala Saaty untuk ditampilkan di kolom Keterangan.
+ * Dipanggil dari JS on-change dropdown skala pairwise.
+ */
+(function() {
+    // Mapping level skala (angka positif 1-9)
+    const LEVELS = {
+        1: 'sama penting',
+        2: 'sedikit lebih penting',
+        3: 'sedikit lebih penting',
+        4: 'lebih penting',
+        5: 'lebih penting',
+        6: 'jauh lebih penting',
+        7: 'jauh lebih penting',
+        8: 'mutlak/ekstrem lebih penting',
+        9: 'mutlak/ekstrem lebih penting',
+    };
+
+    // Tingkat untuk pecahan (nilai < 1) — ditampilkan dari sisi B
+    const RECIPROCAL_LEVELS = {
+        0.5: 'sedikit lebih penting',
+        0.33: 'sedikit lebih penting',
+        0.25: 'lebih penting',
+        0.2: 'lebih penting',
+        0.17: 'jauh lebih penting',
+        0.14: 'jauh lebih penting',
+        0.13: 'mutlak/ekstrem lebih penting',
+        0.11: 'mutlak/ekstrem lebih penting',
+    };
+
+    /**
+     * Menghasilkan teks keterangan berdasarkan nilai skala dan nama kriteria.
+     *
+     * @param {number} val - Nilai skala (1-9 atau pecahan 1/2-1/9)
+     * @param {string} a - Nama kriteria A
+     * @param {string} b - Nama kriteria B
+     * @returns {string}
+     */
+    function getKeterangan(val, a, b) {
+        var num = parseFloat(val);
+
+        if (num === 1) {
+            return a + ' sama penting dengan ' + b;
+        }
+
+        if (num > 1) {
+            var level = LEVELS[Math.round(num)];
+            if (!level) {
+                // fallback untuk skala antara (misal 2.5 hasil kalau ada bug)
+                if (num >= 2 && num <= 3) level = 'sedikit lebih penting';
+                else if (num >= 4 && num <= 5) level = 'lebih penting';
+                else if (num >= 6 && num <= 7) level = 'jauh lebih penting';
+                else if (num >= 8) level = 'mutlak/ekstrem lebih penting';
+                else level = 'lebih penting';
+            }
+            return a + ' ' + level + ' dari ' + b;
+        }
+
+        // Nilai < 1 → kebalikan: B lebih penting dari A
+        var recipLevel = RECIPROCAL_LEVELS[num];
+        if (!recipLevel) {
+            // fallback berdasarkan range
+            if (num >= 0.5) recipLevel = 'sedikit lebih penting';
+            else if (num >= 0.25) recipLevel = 'lebih penting';
+            else if (num >= 0.14) recipLevel = 'jauh lebih penting';
+            else recipLevel = 'mutlak/ekstrem lebih penting';
+        }
+        return b + ' ' + recipLevel + ' dari ' + a;
+    }
+
+    // Attach event listener ke semua dropdown pairwise
+    document.addEventListener('DOMContentLoaded', function() {
+        var selects = document.querySelectorAll('.pairwise-select');
+        selects.forEach(function(sel) {
+            // Baca data atribut untuk nama kriteria
+            var ca = sel.getAttribute('data-ca');
+            var cb = sel.getAttribute('data-cb');
+
+            // Dapatkan sel keterangan (saudara td setelah kriteria B)
+            var tdKeterangan = sel.closest('tr').querySelector('.keterangan-cell');
+
+            // Set initial text
+            if (tdKeterangan) {
+                tdKeterangan.textContent = getKeterangan(sel.value, ca, cb);
+            }
+
+            // Update on change
+            sel.addEventListener('change', function() {
+                if (tdKeterangan) {
+                    tdKeterangan.textContent = getKeterangan(this.value, ca, cb);
+                }
+            });
+        });
+    });
+})();
+</script>
+@endpush

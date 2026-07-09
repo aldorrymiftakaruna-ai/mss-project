@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Employee;
 use App\Models\MaintenanceReport;
 use App\Models\SparePart;
+use App\Services\MtbfService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -299,15 +300,14 @@ class DashboardController extends Controller
         if ($sk > 0) $r[] = ["level"=>"med", "title"=>$sk." sparepart stok di bawah minimum", "desc"=>"Segera reorder."];
 
         $eqQ = Asset::query(); if ($cid > 0) $eqQ->where("company_id", $cid);
-        $eqs = (clone $eqQ)->with("maintenanceReports")->get();
+        $eqs = (clone $eqQ)->get();
+        $mtbfService = app(MtbfService::class);
         $mtbf = [];
         foreach ($eqs as $e) {
-            $rpts = $e->maintenanceReports->sortBy("created_at")->pluck("created_at");
-            if ($rpts->count() < 2) continue;
-            $s = 0; $cnt = 0; $prev = null;
-            foreach ($rpts as $t) { if ($prev !== null) { $s += $prev->diffInDays($t); $cnt++; } $prev = $t; }
-            $m = $cnt > 0 ? round($s / $cnt, 1) : 0;
-            if ($m > 0 && $m < 30) $mtbf[] = $e->tag_no;
+            $result = $mtbfService->hitung($e);
+            if ($result->ada_data && $result->mtbf_hari !== null && $result->mtbf_hari < 30) {
+                $mtbf[] = $e->tag_no;
+            }
         }
         if (count($mtbf) > 0) $r[] = ["level"=>"high", "title"=>count($mtbf)." equipment MTBF kritis", "desc"=>"Interval gagal pendek: ".collect($mtbf)->take(3)->implode(", ")];
 

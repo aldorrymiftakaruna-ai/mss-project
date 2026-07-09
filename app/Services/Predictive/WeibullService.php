@@ -21,13 +21,13 @@ class WeibullService
     {
         $ttf = $this->getTimeToFailure($asset);
 
-        if ($ttf->count() < 3) {
+        if ($ttf->count() < 2) {
             return [
                 'beta'                  => null,
                 'eta'                   => null,
                 'mttf'                  => null,
                 'reliability_at_period' => null,
-                'message'               => 'Data tidak cukup (min. 3 titik TTF).',
+                'message'               => 'Data tidak cukup (min. 3 laporan maintenance diperlukan untuk 2 titik TTF).',
             ];
         }
 

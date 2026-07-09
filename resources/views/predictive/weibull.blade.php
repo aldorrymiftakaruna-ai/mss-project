@@ -6,6 +6,23 @@
 
 @section('content')
 <div class="space-y-6">
+    {{-- Flash messages --}}
+    @if(session('success'))
+    <div class="px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+        {{ session('success') }}
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+        {{ session('error') }}
+    </div>
+    @endif
+    @if(session('info'))
+    <div class="px-4 py-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm">
+        {{ session('info') }}
+    </div>
+    @endif
+
     <div class="flex items-center justify-between">
         <p class="text-sm text-gray-500">
             Estimasi parameter Weibull menggunakan Median Rank Regression (MRR)

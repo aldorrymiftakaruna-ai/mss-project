@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\Company;
 use App\Models\MaintenanceReport;
 use App\Models\SparePart;
+use App\Services\MtbfService;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -49,61 +50,10 @@ class AssetController extends Controller
                             ->orderBy('kode_material')
                             ->get();
 
-        // Hitung MTBF (Mean Time Between Failures) per tag
-        $mtbf = $this->hitungMtbf($asset);
+        // Hitung MTBF (Mean Time Between Failures) per tag via service
+        $mtbf = app(MtbfService::class)->hitung($asset);
 
         return view('assets.show', compact('asset', 'availableParts', 'mtbf'));
-    }
-
-    /**
-     * Hitung MTBF untuk satu asset (per tag).
-     *
-     * MTBF = rata-rata selisih hari antar laporan maintenance
-     * pada asset yang sama.
-     *
-     * @param  \App\Models\Asset  $asset
-     * @return object { mtbf_hari, total_laporan, first_report, last_report }
-     */
-    private function hitungMtbf(Asset $asset): object
-    {
-        $tanggalLaporan = MaintenanceReport::where('asset_id', $asset->id)
-            ->whereNotNull('created_at')
-            ->orderBy('created_at')
-            ->pluck('created_at');
-
-        $totalLaporan = $tanggalLaporan->count();
-
-        if ($totalLaporan < 2) {
-            return (object) [
-                'mtbf_hari'     => null,
-                'total_laporan'  => $totalLaporan,
-                'first_report'   => $tanggalLaporan->first(),
-                'last_report'    => $tanggalLaporan->last(),
-            ];
-        }
-
-        $totalSelisih   = 0;
-        $jumlahInterval = 0;
-        $prev = null;
-
-        foreach ($tanggalLaporan as $tgl) {
-            if ($prev !== null) {
-                $totalSelisih += $prev->diffInDays($tgl);
-                $jumlahInterval++;
-            }
-            $prev = $tgl;
-        }
-
-        $mtbfHari = $jumlahInterval > 0
-            ? round($totalSelisih / $jumlahInterval, 1)
-            : 0;
-
-        return (object) [
-            'mtbf_hari'     => $mtbfHari,
-            'total_laporan'  => $totalLaporan,
-            'first_report'   => $tanggalLaporan->first(),
-            'last_report'    => $tanggalLaporan->last(),
-        ];
     }
 
     // ── Create ────────────────────────────────────────────────────

@@ -345,6 +345,8 @@ class CmController extends Controller
 
     /**
      * Update data temuan visual yang sudah ada (dipanggil dari halaman detail).
+     * Catatan: field action dan date_action dihapus dari form edit biasa,
+     * hanya bisa diisi lewat flow Closing (closeFinding).
      */
     public function updateFinding(Request $request, CmFinding $cmFinding)
     {
@@ -356,12 +358,10 @@ class CmController extends Controller
             'status'      => 'nullable|in:open,closed',
             'pic'         => 'nullable|in:Mechanic,Electric,Production',
             'analysis'    => 'nullable|string',
-            'action'      => 'nullable|string',
             'remark'      => 'nullable|string',
             'foto_1'      => 'nullable|image|max:2048',
             'foto_2'      => 'nullable|image|max:2048',
             'foto_3'      => 'nullable|image|max:2048',
-            'date_action' => 'nullable|date',
         ]);
 
         $data = [
@@ -371,9 +371,7 @@ class CmController extends Controller
             'severity'    => $request->severity ?: null,
             'status'      => $request->status,
             'analysis'    => $request->analysis ?: null,
-            'action'      => $request->action ?: null,
             'pic'         => $request->pic ?: null,
-            'date_action' => $request->date_action ?: null,
             'remark'      => $request->remark ?: null,
         ];
 
@@ -416,6 +414,35 @@ class CmController extends Controller
 
         return redirect()->route('cm.index')
             ->with('success', 'Temuan visual berhasil dihapus.');
+    }
+
+    /**
+     * Proses Closing temuan visual — mengisi action, date_action, dan mengubah status menjadi 'closed'.
+     * Remark ikut diupdate hanya jika diisi (opsional).
+     */
+    public function closeFinding(Request $request, CmFinding $cmFinding)
+    {
+        $request->validate([
+            'action'      => 'nullable|string',
+            'date_action' => 'nullable|date',
+            'remark'      => 'nullable|string',
+        ]);
+
+        $data = [
+            'action'      => $request->action ?: null,
+            'date_action' => $request->date_action ?: null,
+            'status'      => 'closed',
+        ];
+
+        // Timpa remark hanya jika diisi saat closing
+        if ($request->filled('remark')) {
+            $data['remark'] = $request->remark;
+        }
+
+        $cmFinding->update($data);
+
+        return redirect()->route('cm.findings.show', $cmFinding)
+            ->with('success', 'Temuan visual berhasil di-closing.');
     }
 
     public function import(Request $request)

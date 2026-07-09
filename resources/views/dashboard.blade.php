@@ -65,13 +65,13 @@
 </div>
 
 {{-- Grid Utama --}}
-<div class="grid grid-cols-3 gap-5">
+<div class="grid grid-cols-3 gap-5 items-stretch">
 
-    {{-- KIRI: 2/3 --}}
-    <div class="col-span-2 space-y-5">
+        {{-- KIRI: 2/3 --}}
+    <div class="col-span-2 flex flex-col gap-5">
 
         {{-- Chart Tren Laporan (7/30 Hari + Tahunan) --}}
-        <div class="bg-white rounded-xl border border-gray-200">
+        <div class="bg-white rounded-xl border border-gray-200 shrink-0">
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 class="font-semibold text-gray-800">Tren Laporan</h2>
                 <div class="flex items-center gap-2">
@@ -131,7 +131,7 @@
         </div>
 
         {{-- Distribusi Jenis Pekerjaan --}}
-        <div class="bg-white rounded-xl border border-gray-200">
+        <div class="bg-white rounded-xl border border-gray-200 shrink-0">
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 class="font-semibold text-gray-800">Distribusi Jenis Pekerjaan</h2>
             </div>
@@ -159,7 +159,7 @@
         </div>
 
         {{-- Top 10 Equipment Bermasalah (6 bulan) --}}
-        <div class="bg-white rounded-xl border border-gray-200">
+        <div class="bg-white rounded-xl border border-gray-200 shrink-0">
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 class="font-semibold text-gray-800">Top 10 Equipment Bermasalah</h2>
                 <span class="text-xs text-gray-400">6 bulan terakhir</span>
@@ -206,13 +206,13 @@
             </div>
         </div>
 
-        {{-- Vibrasi & Temperature Terbaru --}}
-        <div class="bg-white rounded-xl border border-gray-200">
+                {{-- Vibrasi & Temperature Terbaru --}}
+                <div class="bg-white rounded-xl border border-gray-200 flex-1 flex flex-col min-h-0">
             <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 class="font-semibold text-gray-800">Vibrasi & Temperature — Equipment Danger</h2>
                 <a href="{{ route('cm.index') }}" class="text-xs text-[#0E9E8E] hover:underline">Lihat semua →</a>
             </div>
-            <div class="p-5">
+                        <div class="p-5 flex-1 flex flex-col min-h-0">
                 @php
                     $vibCount = $cmMeas['over_vibrasi']->count();
                     $tempCount = $cmMeas['over_temp']->count();
@@ -225,7 +225,7 @@
                         Semua vibrasi & temperature dalam batas normal dari {{ number_format($cmMeas['total_measurements']) }} data pengukuran.
                     </div>
                 @else
-                    <div class="grid grid-cols-2 gap-3 mb-4">
+                                        <div class="grid grid-cols-2 gap-3 mb-4 shrink-0">
                         <div class="text-center p-3 rounded-lg bg-red-50">
                             <div class="text-xl font-bold text-red-600">{{ $vibCount }}</div>
                             <div class="text-[10px] text-gray-500">Vibrasi >= 7.0 mm/s</div>
@@ -236,10 +236,10 @@
                         </div>
                     </div>
 
-                    @if($vibCount > 0)
-                    <div class="space-y-1.5 mb-3">
-                        <div class="text-xs font-semibold text-gray-700 mb-1">Vibrasi Tinggi ({{ $vibCount }} equipment):</div>
-                        <div class="space-y-1 max-h-40 overflow-y-auto">
+                                        @if($vibCount > 0)
+                    <div class="flex-1 flex flex-col min-h-0">
+                        <div class="text-xs font-semibold text-gray-700 mb-1 mt-3">Vibrasi Tinggi ({{ $vibCount }} equipment):</div>
+                        <div class="space-y-1 flex-1 overflow-y-auto min-h-0">
                             @foreach($cmMeas['over_vibrasi'] as $eq)
                             <a href="{{ route('cm.index') }}"
                                class="flex items-center justify-between text-xs bg-red-50 rounded-lg px-3 py-1.5 hover:bg-red-100 transition cursor-pointer">
@@ -251,10 +251,10 @@
                     </div>
                     @endif
 
-                    @if($tempCount > 0)
-                    <div class="space-y-1.5">
-                        <div class="text-xs font-semibold text-gray-700 mb-1">Temperature Tinggi ({{ $tempCount }} equipment):</div>
-                        <div class="space-y-1 max-h-40 overflow-y-auto">
+                                        @if($tempCount > 0)
+                                        <div class="shrink-0">
+                                            <div class="text-xs font-semibold text-gray-700 mb-1">Temperature Tinggi ({{ $tempCount }} equipment):</div>
+                                            <div class="space-y-1 max-h-[400px] overflow-y-auto">
                             @foreach($cmMeas['over_temp'] as $eq)
                             <a href="{{ route('cm.index') }}"
                                class="flex items-center justify-between text-xs bg-orange-50 rounded-lg px-3 py-1.5 hover:bg-orange-100 transition cursor-pointer">
@@ -266,7 +266,7 @@
                     </div>
                     @endif
 
-                    <div class="text-[10px] text-gray-400 mt-3">
+                                        <div class="text-[10px] text-gray-400 mt-3 shrink-0">
                         Data measurement terbaru per {{ now()->format('d M Y') }} ({{ number_format($cmMeas['total_measurements']) }} total pengukuran).
                     </div>
                 @endif

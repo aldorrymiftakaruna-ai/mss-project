@@ -80,16 +80,18 @@ class AhpService
     /**
      * Menambahkan atau memperbarui perbandingan pairwise antara dua kriteria.
      *
-     * Nilai menggunakan skala Saaty 1-9.
-     * Jika nilai < 1, secara otomatis dibalik (1/nilai) dan posisi A/B ditukar.
+     * Menerima nilai skala Saaty 1-9 (A lebih penting dari B) ATAU pecahan 1/2-1/9
+     * (B lebih penting dari A). Jika nilai < 1, otomatis dibalik (1/nilai) dan
+     * posisi A/B ditukar saat penyimpanan, sehingga nilai yang tersimpan selalu
+     * dalam rentang 1-9 dengan arah dari criterion_a_id ke criterion_b_id.
      *
      * @param int $sessionId
      * @param int $criterionAId
      * @param int $criterionBId
-     * @param float $value Skala Saaty (1-9)
+     * @param float $value Skala Saaty (1-9 atau pecahan 1/2-1/9)
      * @return AhpPairwise
      *
-     * @throws Exception Jika nilai di luar rentang 1-9 (setelah penanganan reciprocal)
+     * @throws Exception Jika nilai di luar rentang 1-9 setelah konversi reciprocal
      */
     public function setPairwise(int $sessionId, int $criterionAId, int $criterionBId, float $value): AhpPairwise
     {
@@ -98,14 +100,20 @@ class AhpService
             $value = 1;
         }
 
-        // Pastikan nilai dalam skala 1-9
+        // Jika nilai < 1 (pecahan 1/2-1/9), balikkan dan tukar A/B
+        if ($value < 1 && $value > 0) {
+            $value          = 1 / $value;
+            $tmp            = $criterionAId;
+            $criterionAId   = $criterionBId;
+            $criterionBId   = $tmp;
+        }
+
         $absValue = abs($value);
 
         if ($absValue < 1 || $absValue > 9) {
             throw new Exception("Nilai pairwise harus antara 1 sampai 9. Diberikan: {$value}");
         }
 
-        // Simpan dengan nilai positif. Nilai reciprocal di-handle saat transposing matriks.
         return AhpPairwise::updateOrCreate(
             [
                 'ahp_session_id' => $sessionId,

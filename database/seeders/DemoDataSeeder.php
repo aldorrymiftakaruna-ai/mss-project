@@ -7,7 +7,7 @@ use App\Models\AhpPairwise;
 use App\Models\AhpSession;
 use App\Models\Asset;
 use App\Models\Company;
-use App\Models\CostRate;
+
 use App\Models\Employee;
 use App\Models\MaintenanceReport;
 use App\Models\RiskScore;
@@ -108,16 +108,6 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        // ===== 6. COST RATE =====
-        CostRate::firstOrCreate(
-            ['company_id' => $company->id, 'effective_date' => now()->startOfYear()],
-            [
-                'downtime_rate_per_min'   => 5000,
-                'overtime_rate_per_hour'  => 75000,
-            ]
-        );
-
-        // ===== 7. AHP SESSION (demo) =====
         $ahpSession = AhpSession::firstOrCreate(
             ['name' => 'Demo - Prioritas Asset'],
             ['is_final' => true, 'consistency_ratio' => 0.05]

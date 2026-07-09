@@ -27,14 +27,9 @@ class IntegratedDssController extends Controller
         $sessionId = request('ahp_session_id') ? (int) request('ahp_session_id') : null;
         $prescriptiveData = $this->engine->getPrescriptiveData($sessionId);
 
-        // Cost Section
-        $costData = $this->engine->getCostData();
-
-        // Forecasting Section
-        $forecastData = $this->engine->getForecastData();
-
-        // Rekomendasi Final
+        // Rekomendasi Final — ambil yang terbaru (generated_at), urut prioritas
         $recommendations = DecisionRecommendation::with('asset')
+            ->orderBy('generated_at', 'desc')
             ->orderBy('priority_score', 'desc')
             ->get();
 
@@ -47,8 +42,6 @@ class IntegratedDssController extends Controller
         return view('integrated.index', compact(
             'predictiveData',
             'prescriptiveData',
-            'costData',
-            'forecastData',
             'recommendations',
             'topRecommendation'
         ));

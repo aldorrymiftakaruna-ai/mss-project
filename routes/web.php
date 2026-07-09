@@ -14,8 +14,6 @@ use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\BotController;
 use App\Http\Controllers\AhpController;
 use App\Http\Controllers\PredictiveController;
-use App\Http\Controllers\CostController;
-use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\IntegratedDssController;
 use App\Http\Controllers\WeibullController;
 
@@ -53,6 +51,7 @@ Route::middleware('admin')->group(function () {
     Route::get('/cm/findings/{cmFinding}', [CmController::class, 'showFinding'])->name('cm.findings.show');
     Route::delete('/cm/findings/{cmFinding}', [CmController::class, 'destroyFinding'])->name('cm.findings.destroy');
     Route::put('/cm/findings/{cmFinding}', [CmController::class, 'updateFinding'])->name('cm.findings.update');
+    Route::post('/cm/findings/{cmFinding}/close', [CmController::class, 'closeFinding'])->name('cm.findings.close');
     Route::resource('cm', CmController::class)->except(['show']);
 
     Route::get('/spareparts/template', [SparePartController::class, 'downloadTemplate'])->name('spareparts.template');
@@ -94,18 +93,6 @@ Route::middleware('admin')->group(function () {
     Route::get('/weibull/{asset}', [WeibullController::class, 'detail'])->name('weibull.detail');
     Route::post('/weibull/calculate-all', [WeibullController::class, 'calculateAll'])->name('weibull.calculate-all');
     Route::post('/weibull/{asset}/calculate', [WeibullController::class, 'calculateAsset'])->name('weibull.calculate-asset');
-
-    // Forecasting
-    Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast.index');
-    Route::get('/forecast/calculate', [ForecastController::class, 'calculate'])->name('forecast.calculate');
-
-    // Cost Analysis
-    Route::get('/cost', [CostController::class, 'index'])->name('cost.index');
-    Route::get('/cost/settings', [CostController::class, 'settings'])->name('cost.settings');
-    Route::post('/cost/rates', [CostController::class, 'updateRates'])->name('cost.rates.update');
-    Route::get('/cost/reanalyze-all', [CostController::class, 'reanalyzeAll'])->name('cost.reanalyze-all');
-    Route::get('/cost/reanalyze/{reportId}', [CostController::class, 'reanalyze'])->name('cost.reanalyze');
-
     Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
     Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
 

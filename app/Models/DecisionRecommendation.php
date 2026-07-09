@@ -12,12 +12,14 @@ class DecisionRecommendation extends Model
         'recommendation_type',
         'priority_score',
         'description',
+        'generated_at',
     ];
 
     protected function casts(): array
     {
         return [
             'priority_score' => 'decimal:3',
+            'generated_at'   => 'datetime',
         ];
     }
 

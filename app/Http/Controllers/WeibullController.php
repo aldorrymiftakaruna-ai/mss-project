@@ -52,10 +52,20 @@ class WeibullController extends Controller
     public function calculateAll()
     {
         $result = $this->weibullService->estimateAll();
+        $total = $result['processed'] + $result['skipped'];
+
+        $message = "Weibull: {$result['processed']} berhasil, {$result['skipped']} dilewati (dari {$total} asset).";
+
+        if ($result['processed'] === 0) {
+            $message .= ' Butuh minimal 3 laporan maintenance per asset.';
+            return redirect()
+                ->route('weibull.index')
+                ->with('info', $message);
+        }
 
         return redirect()
             ->route('weibull.index')
-            ->with('success', "Weibull dihitung: {$result['processed']} berhasil, {$result['skipped']} dilewati.");
+            ->with('success', $message);
     }
 
     /**
